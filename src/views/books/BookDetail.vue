@@ -1,7 +1,7 @@
 <template>
   <div class="p-5 max-w-3xl mx-auto">
     <header class="flex items-center gap-4 mb-5">
-      <router-link to="/" class="text-miku-primary no-underline">← 返回</router-link>
+      <router-link to="/" class="text-miku-primary no-underline">📚 书架</router-link>
       <h1 class="text-2xl font-bold">{{ book?.title }}</h1>
     </header>
     

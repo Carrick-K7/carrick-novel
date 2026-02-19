@@ -8,7 +8,8 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/book/ak-daily'
+      name: 'home',
+      component: Home
     },
     {
       path: '/book/:id',

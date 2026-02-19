@@ -2,8 +2,9 @@
   <div class="min-h-screen flex flex-col">
     <header class="fixed top-0 left-0 right-0 flex justify-between items-center px-5 py-4 bg-miku border-b border-miku z-[100]">
       <div class="flex items-center gap-4">
-        <router-link :to="`/book/${id}`" class="text-miku-primary no-underline">← 返回目录</router-link>
-        <span class="text-sm text-miku-muted">{{ book?.title }}</span>
+        <router-link to="/" class="text-miku-primary no-underline">📚 书架</router-link>
+        <span class="text-miku-muted">/</span>
+        <router-link :to="`/book/${id}`" class="text-miku-primary no-underline">{{ book?.title }}</router-link>
       </div>
       <span class="font-semibold">{{ currentChapter?.title }}</span>
     </header>
@@ -14,23 +15,27 @@
     </div>
     
     <div class="fixed bottom-0 left-0 right-0 flex justify-between px-5 py-4 bg-miku border-t border-miku">
-      <button 
-        :disabled="chapterIndex <= 0" 
-        @click="prevChapter"
-        class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        ← 上一章
-      </button>
+      <router-link :to="`/book/${id}`" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">← 目录</router-link>
       
-      <router-link :to="`/book/${id}`" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">目录</router-link>
+      <router-link to="/" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">📚 书架</router-link>
       
-      <button 
-        :disabled="chapterIndex >= (book?.chapters?.length || 0) - 1" 
-        @click="nextChapter"
-        class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        下一章 →
-      </button>
+      <div class="flex gap-2.5">
+        <button 
+          :disabled="chapterIndex <= 0" 
+          @click="prevChapter"
+          class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ← 上一章
+        </button>
+        
+        <button 
+          :disabled="chapterIndex >= (book?.chapters?.length || 0) - 1" 
+          @click="nextChapter"
+          class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          下一章 →
+        </button>
+      </div>
     </div>
   </div>
 </template>
