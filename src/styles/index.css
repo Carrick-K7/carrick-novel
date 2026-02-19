@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 基础 CSS 变量 */
+:root {
+  /* 主题色 */
+  --miku-primary: #39c5bb;
+  --miku-primary-dark: #2da8a0;
+  
+  /* 亮色模式（默认） */
+  --miku-bg: #ffffff;
+  --miku-bg-secondary: #f5f5f5;
+  --miku-text: #333333;
+  --miku-text-secondary: #666666;
+  --miku-text-muted: #999999;
+  --miku-border: #e0e0e0;
+}
+
+/* 暗色模式 - 通过类名控制 */
+.dark {
+  --miku-bg: #1a1a1a;
+  --miku-bg-secondary: #2d2d2d;
+  --miku-text: #e0e0e0;
+  --miku-text-secondary: #b0b0b0;
+  --miku-text-muted: #808080;
+  --miku-border: #404040;
+}
+
+/* 修复 active 状态的按钮颜色 */
+.book-tab.active {
+  color: white !important;
+}
+
+.book-tab.active .book-name {
+  color: white !important;
+}
+
+/* 确保亮色模式下能看到书名 */
+.book-name {
+  color: var(--miku-text);
+}

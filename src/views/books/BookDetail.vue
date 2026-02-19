@@ -1,24 +1,24 @@
 <template>
-  <div class="book-detail">
-    <header class="header">
-      <router-link to="/" class="back-btn">← 返回</router-link>
-      <h1>{{ book?.title }}</h1>
+  <div class="p-5 max-w-3xl mx-auto">
+    <header class="flex items-center gap-4 mb-5">
+      <router-link to="/" class="text-miku-primary no-underline">← 返回</router-link>
+      <h1 class="text-2xl font-bold">{{ book?.title }}</h1>
     </header>
     
-    <div class="book-info">
-      <span class="book-icon">{{ book?.icon }}</span>
-      <span class="chapter-count">{{ book?.chapters?.length || 0 }} 章</span>
+    <div class="flex items-center gap-2.5 mb-8 p-4 bg-miku-secondary rounded-xl">
+      <span class="text-2xl">{{ book?.icon }}</span>
+      <span class="text-miku-muted">{{ book?.chapters?.length || 0 }} 章</span>
     </div>
     
-    <div class="chapters-list">
+    <div class="flex flex-col gap-2.5">
       <router-link
         v-for="(chapter, index) in book?.chapters"
         :key="index"
         :to="`/read/${book.id}/${index}`"
-        class="chapter-item"
+        class="flex items-center gap-2.5 p-3 bg-miku border border-miku rounded-lg no-underline text-miku hover:border-miku-primary"
       >
-        <span class="chapter-num">{{ String(index + 1).padStart(2, '0') }}</span>
-        <span class="chapter-title">{{ chapter.title }}</span>
+        <span class="text-sm text-miku-muted">{{ String(index + 1).padStart(2, '0') }}</span>
+        <span>{{ chapter.title }}</span>
       </router-link>
     </div>
   </div>
@@ -36,64 +36,3 @@ const book = computed(() => {
   return novelsData.novels.find(n => n.id === props.id)
 })
 </script>
-
-<style scoped>
-.book-detail {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.back-btn {
-  color: var(--miku-primary);
-  text-decoration: none;
-}
-
-.book-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 30px;
-  padding: 15px;
-  background: var(--miku-bg-secondary);
-  border-radius: 10px;
-}
-
-.book-icon {
-  font-size: 24px;
-}
-
-.chapters-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chapter-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: var(--miku-bg);
-  border: 1px solid var(--miku-border);
-  border-radius: 8px;
-  text-decoration: none;
-  color: var(--miku-text);
-}
-
-.chapter-item:hover {
-  border-color: var(--miku-primary);
-}
-
-.chapter-num {
-  color: var(--miku-text-muted);
-  font-size: 14px;
-}
-</style>

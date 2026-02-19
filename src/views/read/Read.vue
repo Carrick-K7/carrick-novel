@@ -1,33 +1,33 @@
 <template>
-  <div class="read-page">
-    <header class="header">
-      <div class="header-left">
-        <router-link :to="`/book/${id}`" class="back-btn">← 返回目录</router-link>
-        <span class="book-title">{{ book?.title }}</span>
+  <div class="min-h-screen flex flex-col">
+    <header class="fixed top-0 left-0 right-0 flex justify-between items-center px-5 py-4 bg-miku border-b border-miku z-[100]">
+      <div class="flex items-center gap-4">
+        <router-link :to="`/book/${id}`" class="text-miku-primary no-underline">← 返回目录</router-link>
+        <span class="text-sm text-miku-muted">{{ book?.title }}</span>
       </div>
-      <span class="chapter-title">{{ currentChapter?.title }}</span>
+      <span class="font-semibold">{{ currentChapter?.title }}</span>
     </header>
     
-    <div class="content">
-      <div v-if="content" class="markdown-body" v-html="renderedContent"></div>
-      <div v-else class="loading">加载中...</div>
+    <div class="flex-1 py-20 px-5 pb-24 max-w-3xl mx-auto w-full">
+      <div v-if="content" class="markdown-body leading-relaxed text-base" v-html="renderedContent" />
+      <div v-else class="text-center py-12 text-miku-muted">加载中...</div>
     </div>
     
-    <div class="nav-footer">
+    <div class="fixed bottom-0 left-0 right-0 flex justify-between px-5 py-4 bg-miku border-t border-miku">
       <button 
         :disabled="chapterIndex <= 0" 
         @click="prevChapter"
-        class="nav-btn"
+        class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
         ← 上一章
       </button>
       
-      <router-link :to="`/book/${id}`" class="nav-btn">目录</router-link>
+      <router-link :to="`/book/${id}`" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">目录</router-link>
       
       <button 
         :disabled="chapterIndex >= (book?.chapters?.length || 0) - 1" 
         @click="nextChapter"
-        class="nav-btn"
+        class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
         下一章 →
       </button>
@@ -92,104 +92,14 @@ const nextChapter = () => {
 watch(currentChapter, loadContent, { immediate: true })
 </script>
 
-<style scoped>
-.read-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background: var(--miku-bg);
-  border-bottom: 1px solid var(--miku-border);
-  z-index: 100;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.back-btn {
-  color: var(--miku-primary);
-  text-decoration: none;
-}
-
-.book-title {
-  color: var(--miku-text-muted);
-  font-size: 14px;
-}
-
-.chapter-title {
-  font-weight: 600;
-}
-
-.content {
-  flex: 1;
-  padding: 80px 20px 100px;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.markdown-body {
-  line-height: 1.8;
-  font-size: 16px;
-}
+<style>
+@reference "tailwindcss";
 
 .markdown-body :deep(h1) {
-  font-size: 24px;
-  margin-bottom: 20px;
+  @apply text-2xl mb-5;
 }
 
 .markdown-body :deep(h2) {
-  font-size: 20px;
-  margin: 20px 0 15px;
-}
-
-.loading {
-  text-align: center;
-  padding: 50px;
-  color: var(--miku-text-muted);
-}
-
-.nav-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  padding: 15px 20px;
-  background: var(--miku-bg);
-  border-top: 1px solid var(--miku-border);
-}
-
-.nav-btn {
-  padding: 10px 20px;
-  background: var(--miku-bg-secondary);
-  border: 1px solid var(--miku-border);
-  border-radius: 8px;
-  color: var(--miku-text);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.nav-btn:hover:not(:disabled) {
-  border-color: var(--miku-primary);
-}
-
-.nav-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  @apply text-xl my-5;
 }
 </style>
