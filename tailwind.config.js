@@ -17,6 +17,7 @@ export default {
         miku: {
           DEFAULT: 'var(--miku-bg)',
           secondary: 'var(--miku-bg-secondary)',
+          primary: 'var(--miku-primary)',
         }
       },
       textColor: {
@@ -24,10 +25,14 @@ export default {
           DEFAULT: 'var(--miku-text)',
           secondary: 'var(--miku-text-secondary)',
           muted: 'var(--miku-text-muted)',
+          primary: 'var(--miku-primary)',
         }
       },
       borderColor: {
-        miku: 'var(--miku-border)',
+        miku: {
+          DEFAULT: 'var(--miku-border)',
+          primary: 'var(--miku-primary)',
+        }
       }
     },
   },
