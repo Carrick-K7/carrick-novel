@@ -42,26 +42,14 @@
         <span class="nav-tooltip">上一章</span>
       </button>
 
-      <!-- 中间：目录 + 书架 -->
-      <div class="flex items-center gap-4 sm:gap-6">
-        <router-link :to="`/book/${id}`" class="nav-btn" title="目录" aria-label="目录">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-          </svg>
-          <span class="nav-tooltip">目录</span>
-        </router-link>
-        
-        <router-link to="/" class="nav-btn" title="书架" aria-label="书架">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            <line x1="9" y1="10" x2="15" y2="10"/>
-          </svg>
-          <span class="nav-tooltip">书架</span>
-        </router-link>
-      </div>
+      <!-- 中间：目录 -->
+      <router-link :to="`/book/${id}?chapter=${chapterIndex}`" class="nav-btn" title="目录" aria-label="目录">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span class="nav-tooltip">目录</span>
+      </router-link>
 
       <!-- 右侧：下一章 -->
       <button 
@@ -139,8 +127,26 @@ const loadContent = async () => {
   try {
     const response = await fetch(`/novels/${currentChapter.value.file}`)
     content.value = await response.text()
+    // 记录阅读历史到 localStorage
+    recordReadingHistory()
   } catch (e) {
     content.value = '加载失败'
+  }
+}
+
+// 记录阅读历史
+const recordReadingHistory = () => {
+  if (!book.value || !currentChapter.value) return
+  
+  const historyKey = `reading_history_${props.id}`
+  const history = JSON.parse(localStorage.getItem(historyKey) || '[]')
+  
+  // 添加当前章节到历史（如果不在列表中）
+  if (!history.includes(chapterIndex.value)) {
+    history.push(chapterIndex.value)
+    // 按章节索引排序
+    history.sort((a, b) => a - b)
+    localStorage.setItem(historyKey, JSON.stringify(history))
   }
 }
 
