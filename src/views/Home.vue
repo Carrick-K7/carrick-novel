@@ -413,6 +413,15 @@ onUnmounted(() => {
   border-color: var(--miku-primary);
 }
 
+.book-tab.active .book-name {
+  color: white;
+}
+
+/* 确保非 active 状态的书名颜色正确 */
+.book-tab:not(.active) .book-name {
+  color: var(--miku-text);
+}
+
 .book-icon {
   font-size: 16px;
 }
