@@ -14,14 +14,24 @@
 | Task | 描述 | 状态 | 文件 |
 |:---:|:---|:---:|:---|
 | T-001 | 项目初始化 - 从 Dashboard 剥离轻小说 | ✅ 已上线 | tasks/T-001.md |
+| T-002 | 引入 TailwindCSS | ⏳ 待启动 | tasks/T-002.md |
+| T-003 | 独立页面路由设计 | ⏳ 待启动 | tasks/T-003.md |
+| T-004 | 自动获取最新章节 | ⏳ 待启动 | tasks/T-004.md |
 
 ## 当前状态
 - ✅ 已完成: 独立项目搭建、构建部署、域名配置
-- 🟡 待优化: UI/UX 优化、移动端适配、性能优化
+- 🟡 已修复: 亮色模式颜色问题、小说图标
+- ⏳ 待启动: TailwindCSS、路由重构、自动更新
+
+## PTT 文档
+
+- 📋 Product Spec: .doc/product_spec.md
+- 📝 Task Spec: .doc/task_spec.md (本文档)
+- 🔧 Tech Spec: .doc/tech_spec.md
 
 ## 数据来源
 - task_spec.md + Git commit
 
 ---
 
-*项目创建时间: 2026-02-19（东八区）*
+*更新时间: 2026-02-19（东八区）*
