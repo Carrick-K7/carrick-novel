@@ -27,26 +27,27 @@
   --miku-border: #404040;
 }
 
-/* Tailwind v4 自定义工具类 */
-@layer utilities {
-  .bg-miku {
-    background-color: var(--miku-bg);
-  }
-  .bg-miku-secondary {
-    background-color: var(--miku-bg-secondary);
-  }
-  .text-miku {
-    color: var(--miku-text);
-  }
-  .text-miku-secondary {
-    color: var(--miku-text-secondary);
-  }
-  .text-miku-muted {
-    color: var(--miku-text-muted);
-  }
-  .border-miku {
-    border-color: var(--miku-border);
-  }
+/* Tailwind v4 自定义工具类 - 直接定义 */
+.bg-miku {
+  background-color: var(--miku-bg);
+}
+.bg-miku-secondary {
+  background-color: var(--miku-bg-secondary);
+}
+.text-miku {
+  color: var(--miku-text);
+}
+.text-miku-secondary {
+  color: var(--miku-text-secondary);
+}
+.text-miku-muted {
+  color: var(--miku-text-muted);
+}
+.border-miku {
+  border-color: var(--miku-border);
+}
+.hover\:border-miku-primary:hover {
+  border-color: var(--miku-primary);
 }
 
 /* 修复 active 状态的按钮颜色 */
