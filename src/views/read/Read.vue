@@ -11,23 +11,14 @@
         <span class="text-miku-muted flex-shrink-0">-</span>
         <span class="truncate font-semibold" :title="currentChapter?.title">{{ currentChapter?.title }}</span>
       </div>
-      <!-- 沉浸模式切换按钮 -->
-      <button 
-        @click="toggleImmersiveMode"
-        class="text-miku-primary hover:text-miku-muted transition-colors p-1"
-        :title="isImmersiveMode ? '退出沉浸模式' : '进入沉浸模式'"
-      >
-        <span class="text-lg">⛶</span>
-      </button>
     </header>
     
     <!-- 阅读区域 -->
     <div 
       class="flex-1 px-5 max-w-3xl mx-auto w-full transition-all duration-300"
       :class="isImmersiveMode ? 'py-6 pb-6' : 'py-20 pb-24'"
-      @click="handleContentClick"
     >
-      <div v-if="content" class="markdown-body leading-relaxed text-base" v-html="renderedContent" />
+      <div v-if="content" class="markdown-body leading-relaxed text-base cursor-pointer" v-html="renderedContent" @click="handleContentClick" />
       <div v-else class="text-center py-12 text-miku-muted">加载中...</div>
     </div>
     
@@ -143,23 +134,10 @@ const toggleImmersiveMode = () => {
   localStorage.setItem('immersiveMode', JSON.stringify(isImmersiveMode.value))
 }
 
-// 处理内容区域点击 - 点击边缘区域切换沉浸模式
+// 处理内容区域点击 - 点击切换沉浸模式
 const handleContentClick = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const y = event.clientY - rect.top
-  const width = rect.width
-  const height = rect.height
-  
-  // 点击边缘区域（上下左右各 50px）退出沉浸模式
-  const edgeThreshold = 50
-  const isEdge = x < edgeThreshold || x > width - edgeThreshold || 
-                 y < edgeThreshold || y > height - edgeThreshold
-  
-  if (isEdge && isImmersiveMode.value) {
-    toggleImmersiveMode()
-  }
+  // 点击内容区域切换沉浸模式
+  toggleImmersiveMode()
 }
 
 // 键盘快捷键支持
