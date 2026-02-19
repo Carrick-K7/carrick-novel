@@ -1,47 +1,88 @@
 <template>
-  <div class="min-h-screen flex flex-col">
-    <header class="fixed top-0 left-0 right-0 flex justify-between items-center px-5 py-4 bg-miku border-b border-miku z-[100]">
-      <div class="flex items-center gap-4">
-        <router-link to="/" class="text-miku-primary no-underline">📚 书架</router-link>
-        <span class="text-miku-muted">/</span>
-        <router-link :to="`/book/${id}`" class="text-miku-primary no-underline">{{ book?.title }}</router-link>
+  <div class="min-h-screen flex flex-col relative" :class="{ 'immersive-mode': isImmersiveMode }">
+    <!-- 顶部导航栏 -->
+    <header 
+      class="fixed top-0 left-0 right-0 flex items-center gap-3 px-4 py-3 bg-miku border-b border-miku z-[100] transition-transform duration-300"
+      :class="isImmersiveMode ? '-translate-y-full' : 'translate-y-0'"
+    >
+      <router-link to="/" class="text-miku-primary no-underline flex-shrink-0 text-lg" title="返回书架">←</router-link>
+      <div class="flex-1 min-w-0 flex items-center gap-2 text-sm">
+        <span class="truncate text-miku-primary" :title="book?.title">{{ book?.title }}</span>
+        <span class="text-miku-muted flex-shrink-0">-</span>
+        <span class="truncate font-semibold" :title="currentChapter?.title">{{ currentChapter?.title }}</span>
       </div>
-      <span class="font-semibold">{{ currentChapter?.title }}</span>
+      <!-- 沉浸模式切换按钮 -->
+      <button 
+        @click="toggleImmersiveMode"
+        class="text-miku-primary hover:text-miku-muted transition-colors p-1"
+        :title="isImmersiveMode ? '退出沉浸模式' : '进入沉浸模式'"
+      >
+        <span class="text-lg">⛶</span>
+      </button>
     </header>
     
-    <div class="flex-1 py-20 px-5 pb-24 max-w-3xl mx-auto w-full">
+    <!-- 阅读区域 -->
+    <div 
+      class="flex-1 px-5 max-w-3xl mx-auto w-full transition-all duration-300"
+      :class="isImmersiveMode ? 'py-6 pb-6' : 'py-20 pb-24'"
+      @click="handleContentClick"
+    >
       <div v-if="content" class="markdown-body leading-relaxed text-base" v-html="renderedContent" />
       <div v-else class="text-center py-12 text-miku-muted">加载中...</div>
     </div>
     
-    <div class="fixed bottom-0 left-0 right-0 flex justify-between px-5 py-4 bg-miku border-t border-miku">
-      <router-link :to="`/book/${id}`" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">← 目录</router-link>
+    <!-- 底部按钮栏 -->
+    <div 
+      class="fixed bottom-0 left-0 right-0 flex justify-between items-center px-3 py-3 bg-miku border-t border-miku gap-2 transition-transform duration-300"
+      :class="isImmersiveMode ? 'translate-y-full' : 'translate-y-0'"
+    >
+      <router-link :to="`/book/${id}`" class="px-3 py-2 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary text-sm whitespace-nowrap">目录</router-link>
       
-      <router-link to="/" class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary">📚 书架</router-link>
+      <router-link to="/" class="px-3 py-2 bg-miku-secondary border border-miku rounded-lg text-miku no-underline transition-colors hover:border-miku-primary text-sm whitespace-nowrap">书架</router-link>
       
-      <div class="flex gap-2.5">
+      <div class="flex gap-2">
         <button 
           :disabled="chapterIndex <= 0" 
           @click="prevChapter"
-          class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-3 py-2 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
         >
-          ← 上一章
+          上章
         </button>
         
         <button 
           :disabled="chapterIndex >= (book?.chapters?.length || 0) - 1" 
           @click="nextChapter"
-          class="px-5 py-2.5 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-3 py-2 bg-miku-secondary border border-miku rounded-lg text-miku cursor-pointer transition-colors hover:border-miku-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
         >
-          下一章 →
+          下章
         </button>
       </div>
     </div>
+
+    <!-- 沉浸模式退出提示条（屏幕顶部边缘） -->
+    <div 
+      v-if="isImmersiveMode"
+      class="fixed top-0 left-0 right-0 h-2 z-[101] cursor-pointer group"
+      @click="toggleImmersiveMode"
+      title="点击退出沉浸模式"
+    >
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-miku-muted/50 rounded-b-lg group-hover:bg-miku-primary/50 transition-colors"></div>
+    </div>
+
+    <!-- 沉浸模式悬浮退出按钮 -->
+    <button
+      v-if="isImmersiveMode"
+      @click="toggleImmersiveMode"
+      class="fixed bottom-4 right-4 z-[101] w-10 h-10 bg-miku-secondary/90 border border-miku rounded-full flex items-center justify-center text-miku-primary hover:bg-miku-primary hover:text-white transition-all duration-300 shadow-lg opacity-0 hover:opacity-100 focus:opacity-100"
+      title="退出沉浸模式"
+    >
+      <span class="text-sm">⛶</span>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import novelsData from '../../../public/novels.json'
 
@@ -52,6 +93,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const content = ref('')
+const isImmersiveMode = ref(false)
 const chapterIndex = computed(() => parseInt(props.chapter) || 0)
 
 const book = computed(() => {
@@ -94,8 +136,81 @@ const nextChapter = () => {
   }
 }
 
+// 切换沉浸模式
+const toggleImmersiveMode = () => {
+  isImmersiveMode.value = !isImmersiveMode.value
+  // 保存用户偏好到 localStorage
+  localStorage.setItem('immersiveMode', JSON.stringify(isImmersiveMode.value))
+}
+
+// 处理内容区域点击 - 点击边缘区域切换沉浸模式
+const handleContentClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  const width = rect.width
+  const height = rect.height
+  
+  // 点击边缘区域（上下左右各 50px）退出沉浸模式
+  const edgeThreshold = 50
+  const isEdge = x < edgeThreshold || x > width - edgeThreshold || 
+                 y < edgeThreshold || y > height - edgeThreshold
+  
+  if (isEdge && isImmersiveMode.value) {
+    toggleImmersiveMode()
+  }
+}
+
+// 键盘快捷键支持
+const handleKeyDown = (event: KeyboardEvent) => {
+  // ESC 键退出沉浸模式
+  if (event.key === 'Escape' && isImmersiveMode.value) {
+    toggleImmersiveMode()
+  }
+  // F11 键切换沉浸模式
+  if (event.key === 'F11') {
+    event.preventDefault()
+    toggleImmersiveMode()
+  }
+}
+
+onMounted(() => {
+  // 恢复用户偏好
+  const savedMode = localStorage.getItem('immersiveMode')
+  if (savedMode !== null) {
+    isImmersiveMode.value = JSON.parse(savedMode)
+  }
+  
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
+
 watch(currentChapter, loadContent, { immediate: true })
 </script>
+
+<style scoped>
+/* 沉浸模式样式 */
+.immersive-mode .markdown-body {
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* 确保过渡动画流畅 */
+header, .fixed.bottom-0 {
+  will-change: transform;
+}
+
+/* 沉浸模式下内容区域优化 */
+.immersive-mode :deep(.markdown-body) {
+  h1 {
+    margin-top: 0;
+  }
+}
+</style>
 
 <style>
 @reference "tailwindcss";
