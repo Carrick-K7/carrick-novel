@@ -13,19 +13,21 @@
     
     <!-- 当前正在阅读 -->
     <div v-if="currentChapterIndex !== null" class="mb-6">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-sm font-medium text-miku-primary">📖 当前正在阅读</span>
-        <span class="text-xs text-miku-muted">({{ readProgress }}%)</span>
+      <!-- 进度提示 -->
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-miku-muted">📖 当前阅读进度</span>
+        <span class="text-xs text-miku-primary">已读 {{ readCount }}/{{ book?.chapters?.length || 0 }} 章</span>
       </div>
+      <!-- 当前章节行 -->
       <router-link
         :to="`/read/${book.id}/${currentChapterIndex}`"
-        class="flex items-center gap-2.5 p-4 bg-miku-primary/10 border-2 border-miku-primary rounded-xl no-underline transition-all hover:bg-miku-primary/20"
+        class="flex items-center gap-3 py-3 px-1 border-b border-miku no-underline group"
       >
-        <span class="w-8 h-8 flex items-center justify-center bg-miku-primary text-white rounded-lg text-sm font-medium">
-          {{ String(currentChapterIndex + 1).padStart(2, '0') }}
+        <span class="text-sm font-medium text-miku-primary tabular-nums">
+          第{{ String(currentChapterIndex + 1).padStart(2, '0') }}章
         </span>
-        <span class="font-medium text-miku-primary">{{ book?.chapters?.[currentChapterIndex]?.title }}</span>
-        <span class="ml-auto text-sm text-miku-primary">继续阅读 →</span>
+        <span class="flex-1 text-sm text-miku truncate">{{ book?.chapters?.[currentChapterIndex]?.title }}</span>
+        <span class="text-xs text-miku-primary group-hover:underline shrink-0">继续阅读</span>
       </router-link>
     </div>
     
