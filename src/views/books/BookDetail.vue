@@ -8,7 +8,6 @@
     <div class="flex items-center gap-2.5 mb-8 p-4 bg-miku-secondary rounded-xl">
       <span class="text-2xl">{{ book?.icon }}</span>
       <span class="text-miku-muted">{{ book?.chapters?.length || 0 }} 章</span>
-      <span v-if="readCount > 0" class="text-sm text-miku-primary">· 已读 {{ readCount }} 章</span>
     </div>
     
     <!-- 当前正在阅读 -->
@@ -34,12 +33,7 @@
     <!-- 章节列表 -->
     <div class="flex flex-col gap-2.5">
       <template v-for="(chapter, index) in book?.chapters" :key="index">
-        <!-- 跳过分隔线如果当前章节在顶部显示 -->
-        <div v-if="index === currentChapterIndex && shouldShowCurrentChapterInList" 
-             class="border-t border-miku my-4"></div>
-        
-        <router-link
-          v-if="shouldShowChapter(index)"
+          <router-link
           :to="`/read/${book.id}/${index}`"
           :class="getChapterClass(index)"
         >
@@ -92,18 +86,8 @@ const isChapterRead = (index: number): boolean => {
   return readingHistory.value.includes(index)
 }
 
-// 判断当前章节是否在列表中显示（如果已经在顶部显示则不重复显示）
-const shouldShowCurrentChapterInList = computed(() => {
-  // 当前章节总是在顶部显示，不在列表中重复显示
-  return false
-})
-
 // 判断是否应该显示章节
 const shouldShowChapter = (index: number): boolean => {
-  // 如果当前章节已置顶，不在列表中重复显示
-  if (index === currentChapterIndex.value) {
-    return false
-  }
   return true
 }
 
