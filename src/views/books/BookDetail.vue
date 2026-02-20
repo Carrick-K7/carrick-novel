@@ -5,11 +5,6 @@
       <h1 class="text-2xl font-bold">{{ book?.title }}</h1>
     </header>
     
-    <div class="flex items-center gap-2.5 mb-8 p-4 bg-miku-secondary rounded-xl">
-      <span class="text-2xl">{{ book?.icon }}</span>
-      <span class="text-miku-muted">{{ book?.chapters?.length || 0 }} 章</span>
-    </div>
-    
     <!-- 当前正在阅读 -->
     <div v-if="currentChapterIndex !== null" class="mb-6">
       <!-- 进度提示 -->
@@ -41,10 +36,10 @@
             {{ String(index + 1).padStart(2, '0') }}
           </span>
           <span :class="getChapterTitleClass(index)">{{ chapter.title }}</span>
-          <!-- 已读标记 -->
-          <span v-if="isChapterRead(index)" class="ml-auto text-xs text-miku-muted">✓</span>
-          <!-- 当前章节标记 -->
-          <span v-else-if="index === currentChapterIndex" class="ml-auto text-xs text-miku-primary font-medium">阅读中</span>
+          <!-- 最近阅读章节显示"阅读中" -->
+          <span v-if="isCurrentChapter(index)" class="ml-auto text-xs bg-miku-primary text-white px-2 py-0.5 rounded font-medium">阅读中</span>
+          <!-- 其他已读章节显示"已读" -->
+          <span v-else-if="isChapterRead(index)" class="ml-auto text-xs bg-miku-primary/20 text-miku-primary px-2 py-0.5 rounded">已读</span>
         </router-link>
       </template>
     </div>
@@ -81,9 +76,14 @@ const readProgress = computed(() => {
 // 已读章节数
 const readCount = computed(() => readingHistory.value.length)
 
-// 判断章节是否已读
+// 判断章节是否已读（排除当前阅读中的章节）
 const isChapterRead = (index: number): boolean => {
-  return readingHistory.value.includes(index)
+  return readingHistory.value.includes(index) && index !== currentChapterIndex.value
+}
+
+// 判断是否为当前正在阅读的章节
+const isCurrentChapter = (index: number): boolean => {
+  return index === currentChapterIndex.value
 }
 
 // 判断是否应该显示章节
@@ -114,9 +114,8 @@ const getChapterNumberClass = (index: number): string => {
 
 // 获取章节标题样式
 const getChapterTitleClass = (index: number): string => {
-  if (isChapterRead(index)) {
-    return 'line-through opacity-60'
-  }
+  // 已移除删除线样式，统一使用正常文字样式
+  // 已读状态通过背景色和"已读"标签区分
   return ''
 }
 
