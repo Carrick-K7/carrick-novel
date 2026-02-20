@@ -2,11 +2,13 @@
   <div class="min-h-screen flex flex-col relative" :class="{ 'immersive-mode': isImmersiveMode }">
     <!-- 顶部导航栏 -->
     <header 
-      class="fixed top-0 left-0 right-0 flex items-center gap-3 px-4 py-3 bg-miku border-b border-miku z-[100] transition-transform duration-300"
+      class="fixed top-0 left-0 right-0 flex items-center gap-3 px-4 py-3 bg-miku border-b border-miku z-[100] transition-transform duration-300 cursor-pointer hover:opacity-80 transition-opacity"
       :class="isImmersiveMode ? '-translate-y-full' : 'translate-y-0'"
+      @click="$router.push('/')"
+      title="返回书架"
     >
-      <router-link to="/" class="text-miku-primary no-underline flex-shrink-0 text-lg" title="返回书架">←</router-link>
-      <div class="flex-1 min-w-0 flex items-center gap-2 text-sm">
+      <span class="text-miku-primary flex-shrink-0 text-lg">←</span>
+      <div class="flex-1 min-w-0 flex items-center gap-2 text-sm pointer-events-none">
         <span class="truncate text-miku-primary" :title="book?.title">{{ book?.title }}</span>
         <span class="text-miku-muted flex-shrink-0">-</span>
         <span class="truncate font-semibold" :title="currentChapter?.title">{{ currentChapter?.title }}</span>
@@ -86,6 +88,20 @@
     >
       <span class="text-sm">⛶</span>
     </button>
+
+    <!-- 右下角回到顶部按钮 -->
+    <button
+      class="fixed bottom-5 right-5 z-[100] w-12 h-12 rounded-full bg-miku-primary text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl"
+      :class="{ 'opacity-0 translate-y-4 pointer-events-none': !showBackToTop, 'opacity-100 translate-y-0': showBackToTop }"
+      @click="scrollToTop"
+      title="回到顶部"
+      aria-label="回到顶部"
+    >
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 19V5"/>
+        <path d="M5 12l7-7 7 7"/>
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -93,6 +109,18 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import novelsData from '../../../public/novels.json'
+
+// ============ 节流函数 ============
+function throttle<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
+  let lastTime = 0
+  return function (...args: Parameters<T>) {
+    const now = Date.now()
+    if (now - lastTime >= delay) {
+      lastTime = now
+      fn(...args)
+    }
+  }
+}
 
 const props = defineProps<{
   id: string
@@ -102,6 +130,8 @@ const props = defineProps<{
 const router = useRouter()
 const content = ref('')
 const isImmersiveMode = ref(false)
+const showBackToTop = ref(false)
+const SCROLL_THRESHOLD = 300
 const chapterIndex = computed(() => parseInt(props.chapter) || 0)
 
 const book = computed(() => {
@@ -132,6 +162,56 @@ const loadContent = async () => {
   } catch (e) {
     content.value = '加载失败'
   }
+}
+
+// ============ 滚动位置记忆功能 ============
+
+// 生成 localStorage key
+const getScrollPositionKey = (bookId: string, chIndex: number) => {
+  return `scroll_position_${bookId}_${chIndex}`
+}
+
+// 保存滚动位置（节流）
+const saveScrollPosition = throttle(() => {
+  if (!props.id) return
+  const key = getScrollPositionKey(props.id, chapterIndex.value)
+  const data = {
+    scrollY: window.scrollY,
+    timestamp: Date.now()
+  }
+  localStorage.setItem(key, JSON.stringify(data))
+  console.log(`[Scroll] Saved position for chapter ${chapterIndex.value}:`, data.scrollY)
+}, 300)
+
+// 控制回到顶部按钮显示/隐藏
+const handleBackToTopVisibility = throttle(() => {
+  showBackToTop.value = window.scrollY > SCROLL_THRESHOLD
+}, 100)
+
+// 恢复滚动位置
+const restoreScrollPosition = () => {
+  if (!props.id) return
+  const key = getScrollPositionKey(props.id, chapterIndex.value)
+  const saved = localStorage.getItem(key)
+  if (saved) {
+    try {
+      const { scrollY } = JSON.parse(saved)
+      // 使用 setTimeout 确保内容渲染完成后再恢复位置
+      setTimeout(() => {
+        window.scrollTo({ top: scrollY, behavior: 'smooth' })
+        console.log(`[Scroll] Restored position for chapter ${chapterIndex.value}:`, scrollY)
+      }, 100)
+    } catch (e) {
+      console.error('[Scroll] Failed to restore position:', e)
+    }
+  }
+}
+
+// 回到顶部
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  // 保存顶部位置
+  saveScrollPosition()
 }
 
 // 记录阅读历史
@@ -194,15 +274,47 @@ onMounted(() => {
   if (savedMode !== null) {
     isImmersiveMode.value = JSON.parse(savedMode)
   }
-  
+
+  // 恢复当前章节的滚动位置
+  restoreScrollPosition()
+
+  // 添加滚动事件监听（节流）
+  window.addEventListener('scroll', saveScrollPosition)
+
+  // 添加回到顶部按钮显示/隐藏监听
+  window.addEventListener('scroll', handleBackToTopVisibility)
+  // 初始化按钮状态
+  handleBackToTopVisibility()
+
   window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
+  // 保存当前滚动位置
+  saveScrollPosition()
+
+  window.removeEventListener('scroll', saveScrollPosition)
+  window.removeEventListener('scroll', handleBackToTopVisibility)
   window.removeEventListener('keydown', handleKeyDown)
 })
 
 watch(currentChapter, loadContent, { immediate: true })
+
+// 监听章节变化，保存旧章节位置并恢复新章节位置
+watch(chapterIndex, (newIndex, oldIndex) => {
+  // 保存旧章节的滚动位置
+  if (oldIndex !== undefined) {
+    const oldKey = getScrollPositionKey(props.id, oldIndex)
+    localStorage.setItem(oldKey, JSON.stringify({
+      scrollY: window.scrollY,
+      timestamp: Date.now()
+    }))
+    console.log(`[Scroll] Saved position for chapter ${oldIndex} before switching`)
+  }
+  
+  // 恢复新章节的滚动位置
+  restoreScrollPosition()
+})
 </script>
 
 <style scoped>
