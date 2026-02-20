@@ -91,8 +91,13 @@
 
     <!-- 右下角回到顶部按钮 -->
     <button
-      class="fixed bottom-5 right-5 z-[110] w-12 h-12 rounded-full bg-miku-primary text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl"
-      :class="{ 'opacity-0 translate-y-4 pointer-events-none': !showBackToTop, 'opacity-100 translate-y-0': showBackToTop }"
+      class="fixed right-5 z-[110] w-12 h-12 rounded-full bg-miku-primary text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl"
+      :class="{
+        'opacity-0 translate-y-4 pointer-events-none': !showBackToTop,
+        'opacity-100 translate-y-0': showBackToTop,
+        'bottom-5': isImmersiveMode,
+        'bottom-[80px]': !isImmersiveMode
+      }"
       @click="scrollToTop"
       title="回到顶部"
       aria-label="回到顶部"
