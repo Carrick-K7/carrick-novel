@@ -537,20 +537,24 @@ const renderedContent = computed(() => {
   let html = content.value
     .replace(/# (.*)/, '<h1>$1</h1>')
     .replace(/## (.*)/, '<h2>$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+  // 初音色渲染：先处理特殊格式（在粗体转换之前！）
+  // 场景格式1: **【场景：...】** 
+  html = html.replace(/^(\*\*【场景[：:].*?】\*\*)$/gm, '<div style="color: #39c5bb; font-weight: bold; margin: 1em 0;">$1</div>')
+  // 场景格式2: ## 场景X：...
+  html = html.replace(/^(## 场景[一二三四五六七八九十\d]+[：:].+)$/gm, '<h2 style="color: #39c5bb;">$1</h2>')
+  
+  // 章节结束格式（在粗体转换之前）
+  // 格式1: **【第四章完】** 或 **【第100章·完】**
+  html = html.replace(/^(\*\*【第\d+章[·\s]?完】\*\*)$/gm, '<div style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
+  // 格式2: **（第6章 完）**
+  html = html.replace(/^(\*\*[（(]第\d+章\s*完[）)]\*\*)$/gm, '<div style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
+  
+  // 然后再转换普通粗体
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     
   // 初音色渲染：检测 --- 或 *** 替换为分割线（降低宽度到1px）
-  html = html.replace(/^(---|\*\*\*)$/gm, '<hr class="miku-divider" style="border-top: 1px solid #39c5bb;">')
-  
-  // 初音色渲染：检测 【场景：...】或 ## 场景X：... 格式
-  html = html.replace(/^(\*\*【场景[：:].*?】\*\*)$/gm, '<div class="miku-scene" style="color: #39c5bb; font-weight: bold; margin: 1em 0;">$1</div>')
-  html = html.replace(/^(## 场景[一二三四五六七八九十\d]+[：:].+)$/gm, '<h2 class="miku-scene" style="color: #39c5bb;">$1</h2>')
-  
-  // 初音色渲染：检测 章节结束（3种格式）
-  // 格式1: 【第四章完】或【第100章·完】
-  html = html.replace(/^(\*\*【第\d+章[·\s]?完】\*\*)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
-  // 格式2: （第6章 完）
-  html = html.replace(/^(\*\*[（(]第\d+章\s*完[）)]\*\*)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
+  html = html.replace(/^(---|\*\*\*)$/gm, '<hr style="border: none; border-top: 1px solid #39c5bb; margin: 2em 0;">')
   
   // 处理普通段落
   html = html.replace(/\n/g, '<br>')
