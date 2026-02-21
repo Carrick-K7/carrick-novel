@@ -34,7 +34,8 @@ const goToBook = (bookId: string) => {
   const history = JSON.parse(localStorage.getItem(`reading_history_${bookId}`) || '[]')
   if (history.length > 0) {
     const lastChapter = history[history.length - 1]
-    router.push(`/read/${bookId}/${lastChapter}`)
+    // URL使用1-based索引，存储的是0-based，需要+1
+    router.push(`/read/${bookId}/${lastChapter + 1}`)
   } else {
     router.push(`/book/${bookId}`)
   }

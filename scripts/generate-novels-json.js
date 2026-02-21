@@ -32,7 +32,10 @@ function generateNovelsData() {
   const otherFiles = [];
 
   for (const file of files) {
-    if (file.startsWith('第') && file.includes('章')) {
+    // 过滤简化版：排除 "第1章.md" 这种格式（无下划线、无前导零）
+    // 只保留完整版："第01章_标题.md" 或 "第10章_标题.md"
+    const isSimplifiedVersion = /^第\d+章\.md$/.test(file);
+    if (file.startsWith('第') && file.includes('章') && !isSimplifiedVersion) {
       // 提取章节标题
       const title = file.replace('.md', '').replace(/_/g, ' ');
       akDailyChapters.push({

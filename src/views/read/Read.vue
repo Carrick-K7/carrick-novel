@@ -539,14 +539,14 @@ const renderedContent = computed(() => {
     .replace(/## (.*)/, '<h2>$1</h2>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     
-  // 初音色渲染：检测 --- 或 *** 替换为分割线
-  html = html.replace(/^(---|\*\*\*)$/gm, '<hr class="miku-divider" style="border-color: #39c5bb;">')
+  // 初音色渲染：检测 --- 或 *** 替换为分割线（降低宽度到1px）
+  html = html.replace(/^(---|\*\*\*)$/gm, '<hr class="miku-divider" style="border-top: 1px solid #39c5bb;">')
   
-  // 初音色渲染：检测 场景： 开头
-  html = html.replace(/^(场景[：:])(.+)$/gm, '<p><span class="miku-scene" style="color: #39c5bb; font-weight: bold;">$1</span>$2</p>')
+  // 初音色渲染：检测 【场景】或 场景： 开头
+  html = html.replace(/^(【场景】|场景[：:])(.+)$/gm, '<p><span class="miku-scene" style="color: #39c5bb; font-weight: bold;">$1</span>$2</p>')
   
-  // 初音色渲染：检测 章节结束
-  html = html.replace(/^(章节结束)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em;">章节结束</div>')
+  // 初音色渲染：检测 章节结束 或 （第XX章 完）
+  html = html.replace(/^(章节结束|（第\d+章 完）)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em;">$1</div>')
   
   // 处理普通段落
   html = html.replace(/\n/g, '<br>')
@@ -876,7 +876,7 @@ header, .fixed.bottom-0 {
    ======================================== */
 .miku-divider {
   border: none;
-  border-top: 2px solid #39c5bb;
+  border-top: 1px solid #39c5bb;
   margin: 2em 0;
 }
 
@@ -1273,7 +1273,7 @@ header, .fixed.bottom-0 {
 /* 初音色样式 - 全局作用域 */
 :deep(.miku-divider) {
   border: none;
-  border-top: 2px solid #39c5bb;
+  border-top: 1px solid #39c5bb;
   margin: 2em 0;
 }
 
