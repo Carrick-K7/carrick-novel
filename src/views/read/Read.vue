@@ -1,7 +1,40 @@
 <template>
-  <div class="min-h-screen flex flex-col relative" :class="{ 'immersive-mode': isImmersiveMode }">
+  <div class="min-h-screen flex flex-col relative" :class="{ 'immersive-mode': isImmersiveMode }"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
+    <!-- 滑动提示遮罩 -->
+    <Transition name="fade-overlay">
+      <div v-if="showSwipeHint" class="swipe-hint-overlay" :class="swipeHintDirection">
+        <div class="swipe-hint-icon">
+          <svg v-if="swipeHintDirection === 'left'" class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+          <svg v-else class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </div>
+        <div class="swipe-hint-text">
+          {{ swipeHintDirection === 'left' ? '下一章' : '上一章' }}
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 上拉加载提示 -->
+    <Transition name="fade-overlay">
+      <div v-if="showPullUpHint" class="pull-up-hint-overlay">
+        <div class="pull-up-hint-content">
+          <svg class="w-8 h-8 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M19 12l-7 7-7-7"/>
+          </svg>
+          <span class="pull-up-hint-text">释放加载下一章</span>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 顶部导航栏 -->
-    <header 
+    <header
       class="fixed top-0 left-0 right-0 flex items-center gap-3 px-4 py-3 bg-miku border-b border-miku z-[100] transition-transform duration-300 cursor-pointer hover:opacity-80 transition-opacity"
       :class="isImmersiveMode ? '-translate-y-full' : 'translate-y-0'"
       @click="$router.push('/')"
@@ -14,14 +47,57 @@
         <span class="truncate font-semibold" :title="currentChapter?.title">{{ currentChapter?.title }}</span>
       </div>
     </header>
-    
+
     <!-- 阅读区域 -->
     <div 
       class="flex-1 px-5 max-w-3xl mx-auto w-full transition-all duration-300"
       :class="isImmersiveMode ? 'py-6 pb-6' : 'py-20 pb-24'"
     >
-      <div v-if="content" class="markdown-body leading-relaxed text-base cursor-pointer" v-html="renderedContent" @click="handleContentClick" />
-      <div v-else class="text-center py-12 text-miku-muted">加载中...</div>
+      <!-- 章节内容过渡区域 -->
+      <Transition 
+        name="chapter-fade" 
+        mode="out-in"
+        @enter="onChapterEnter"
+        @after-leave="endChapterTransition"
+      >
+        <!-- 加载中状态 (isLoading) -->
+        <div v-if="isLoading" key="loading" class="loading-indicator">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">
+            <span class="loading-label">正在加载</span>
+            <span class="loading-chapter-number">第 {{ chapterIndex + 1 }} 章</span>
+          </div>
+        </div>
+
+        <!-- 章节过渡状态 -->
+        <div v-else-if="isTransitioning" key="transitioning" class="loading-indicator">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">
+            <span class="loading-label">正在加载</span>
+            <span v-if="targetChapter" class="loading-chapter-title">
+              {{ targetChapter.title }}
+            </span>
+            <span v-else class="loading-chapter-number">
+              第 {{ chapterIndex + 1 }} 章
+            </span>
+          </div>
+        </div>
+        
+        <!-- 章节内容 -->
+        <div v-else-if="content" key="content" class="chapter-content">
+          <div 
+            class="markdown-body leading-relaxed text-base cursor-pointer" 
+            v-html="renderedContent" 
+            @click="handleContentClick" 
+          />
+        </div>
+        
+        <!-- 默认空状态 -->
+        <div v-else key="empty" class="text-center py-12 text-miku-muted">
+          <div class="loading-spinner mb-4"></div>
+          加载中...
+        </div>
+      </Transition>
     </div>
     
     <!-- 底部图标导航栏 -->
@@ -44,14 +120,47 @@
         <span class="nav-tooltip">上一章</span>
       </button>
 
-      <!-- 中间：目录 -->
-      <router-link :to="`/book/${id}?chapter=${chapterIndex}`" class="nav-btn" title="目录" aria-label="目录">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-        </svg>
-        <span class="nav-tooltip">目录</span>
-      </router-link>
+      <!-- 中间：目录 + 自动播放控制 -->
+      <div class="flex items-center gap-2">
+        <!-- 自动播放控制栏 -->
+        <div v-if="isAutoPlay" class="auto-play-controls">
+          <button @click="toggleAutoPlay" class="auto-play-btn" title="暂停自动播放">
+            <span class="text-lg">⏸️</span>
+          </button>
+          <div class="speed-selector">
+            <button 
+              @click="setAutoPlaySpeed('slow')" 
+              class="speed-btn"
+              :class="{ active: autoPlaySpeed === 'slow' }"
+              title="慢速 (5秒)"
+            >慢</button>
+            <button 
+              @click="setAutoPlaySpeed('medium')" 
+              class="speed-btn"
+              :class="{ active: autoPlaySpeed === 'medium' }"
+              title="中速 (3秒)"
+            >中</button>
+            <button 
+              @click="setAutoPlaySpeed('fast')" 
+              class="speed-btn"
+              :class="{ active: autoPlaySpeed === 'fast' }"
+              title="快速 (1.5秒)"
+            >快</button>
+          </div>
+        </div>
+        <button v-else @click="toggleAutoPlay" class="nav-btn" title="自动播放" aria-label="自动播放">
+          <span class="text-lg">▶️</span>
+          <span class="nav-tooltip">自动播放</span>
+        </button>
+
+        <router-link :to="`/book/${id}?chapter=${chapterIndex + 1}`" class="nav-btn" title="目录" aria-label="目录">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span class="nav-tooltip">目录</span>
+        </router-link>
+      </div>
 
       <!-- 右侧：下一章 -->
       <button 
@@ -115,6 +224,264 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import novelsData from '../../../public/novels.json'
 
+// ============ 加载动画相关 ============
+const isLoading = ref(false)
+
+// ============ 自动播放相关 ============
+const isAutoPlay = ref(false)
+const autoPlaySpeed = ref<'slow' | 'medium' | 'fast'>('medium')
+const autoPlayTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const isAtBottom = ref(false)
+
+// 速度映射表
+const speedMap = {
+  slow: 5000,
+  medium: 3000,
+  fast: 1500
+}
+
+// 切换自动播放
+const toggleAutoPlay = () => {
+  isAutoPlay.value = !isAutoPlay.value
+  if (isAutoPlay.value) {
+    // 开启自动播放时，检查是否已经在底部
+    checkIfAtBottom()
+    if (isAtBottom.value) {
+      startAutoPlayTimer()
+    }
+  } else {
+    // 关闭自动播放时，清除计时器
+    clearAutoPlayTimer()
+  }
+}
+
+// 设置自动播放速度
+const setAutoPlaySpeed = (speed: 'slow' | 'medium' | 'fast') => {
+  autoPlaySpeed.value = speed
+  // 如果正在自动播放且已经在底部，重置计时器
+  if (isAutoPlay.value && isAtBottom.value) {
+    clearAutoPlayTimer()
+    startAutoPlayTimer()
+  }
+}
+
+// 启动自动播放计时器
+const startAutoPlayTimer = () => {
+  // 清除旧计时器
+  clearAutoPlayTimer()
+  
+  // 如果不是最后一章，启动新计时器
+  if (chapterIndex.value < (book.value?.chapters?.length || 0) - 1) {
+    const delay = speedMap[autoPlaySpeed.value]
+    autoPlayTimer.value = setTimeout(() => {
+      nextChapter()
+    }, delay)
+  }
+}
+
+// 清除自动播放计时器
+const clearAutoPlayTimer = () => {
+  if (autoPlayTimer.value) {
+    clearTimeout(autoPlayTimer.value)
+    autoPlayTimer.value = null
+  }
+}
+
+// 检查是否在底部
+const checkIfAtBottom = () => {
+  const scrollTop = window.scrollY
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  // 允许 50px 的误差范围
+  const atBottom = scrollTop + windowHeight >= documentHeight - 50
+  
+  if (atBottom && !isAtBottom.value && isAutoPlay.value) {
+    // 刚到达底部，启动计时器
+    isAtBottom.value = true
+    startAutoPlayTimer()
+  } else if (!atBottom && isAtBottom.value) {
+    // 离开底部，清除计时器
+    isAtBottom.value = false
+    clearAutoPlayTimer()
+  }
+  
+  return atBottom
+}
+
+// ============ 触摸滑动相关 ============
+const touchStart = ref({ x: 0, y: 0, time: 0 })
+const touchEnd = ref({ x: 0, y: 0, time: 0 })
+const isSwiping = ref(false)
+const showSwipeHint = ref(false)
+const swipeHintDirection = ref<'left' | 'right' | null>(null)
+const swipeHintTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
+// 上拉加载相关
+const showPullUpHint = ref(false)
+const isPullingUp = ref(false)
+const pullUpThreshold = 80 // 上拉触发阈值（像素）
+const swipeThreshold = 50 // 水平滑动阈值
+const swipeMaxVertical = 100 // 最大垂直偏移（防止斜滑）
+
+// 触摸开始
+const handleTouchStart = (e: TouchEvent) => {
+  const touch = e.touches[0]
+  touchStart.value = {
+    x: touch.clientX,
+    y: touch.clientY,
+    time: Date.now()
+  }
+  isSwiping.value = false
+  isPullingUp.value = false
+}
+
+// 触摸移动
+const handleTouchMove = (e: TouchEvent) => {
+  const touch = e.touches[0]
+  touchEnd.value = {
+    x: touch.clientX,
+    y: touch.clientY,
+    time: Date.now()
+  }
+
+  const diffX = touchStart.value.x - touchEnd.value.x
+  const diffY = touchStart.value.y - touchEnd.value.y
+  const absDiffX = Math.abs(diffX)
+  const absDiffY = Math.abs(diffY)
+
+  // 检测是否为水平滑动
+  if (absDiffX > absDiffY && absDiffX > 20 && absDiffY < swipeMaxVertical) {
+    isSwiping.value = true
+
+    // 检测是否有上一章/下一章可切换
+    if (diffX > 30 && chapterIndex.value < (book.value?.chapters?.length || 0) - 1) {
+      // 左滑 - 显示下一章提示
+      swipeHintDirection.value = 'left'
+      showSwipeHint.value = true
+    } else if (diffX < -30 && chapterIndex.value > 0) {
+      // 右滑 - 显示上一章提示
+      swipeHintDirection.value = 'right'
+      showSwipeHint.value = true
+    } else {
+      showSwipeHint.value = false
+    }
+  }
+
+  // 检测是否为上拉（在页面底部时）
+  const scrollTop = window.scrollY
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  const atBottom = scrollTop + windowHeight >= documentHeight - 10
+
+  if (atBottom && diffY < -30 && chapterIndex.value < (book.value?.chapters?.length || 0) - 1) {
+    // 在底部且向上拉
+    isPullingUp.value = true
+    const pullUpDistance = Math.abs(diffY)
+
+    if (pullUpDistance > pullUpThreshold) {
+      showPullUpHint.value = true
+    } else {
+      showPullUpHint.value = false
+    }
+  } else if (!atBottom) {
+    showPullUpHint.value = false
+    isPullingUp.value = false
+  }
+}
+
+// 触摸结束
+const handleTouchEnd = (e: TouchEvent) => {
+  const touch = e.changedTouches[0]
+  touchEnd.value = {
+    x: touch.clientX,
+    y: touch.clientY,
+    time: Date.now()
+  }
+
+  // 隐藏滑动提示
+  showSwipeHint.value = false
+  showPullUpHint.value = false
+
+  // 处理滑动
+  handleSwipe()
+
+  // 清理状态
+  isSwiping.value = false
+  isPullingUp.value = false
+}
+
+// 处理滑动逻辑
+const handleSwipe = () => {
+  const diffX = touchStart.value.x - touchEnd.value.x
+  const diffY = touchStart.value.y - touchEnd.value.y
+  const absDiffX = Math.abs(diffX)
+  const absDiffY = Math.abs(diffY)
+  const duration = touchEnd.value.time - touchStart.value.time
+
+  // 必须是水平滑动主导，且超过阈值
+  if (absDiffX > absDiffY && absDiffX > swipeThreshold && absDiffY < swipeMaxVertical) {
+    if (diffX > 0) {
+      // 左滑 - 下一章
+      nextChapter()
+    } else {
+      // 右滑 - 上一章
+      prevChapter()
+    }
+    return
+  }
+
+  // 处理上拉加载下一章（快速上拉或超过阈值）
+  const scrollTop = window.scrollY
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  const atBottom = scrollTop + windowHeight >= documentHeight - 10
+
+  if (atBottom && diffY < -pullUpThreshold) {
+    // 上拉超过阈值，加载下一章
+    nextChapter()
+    return
+  }
+
+  // 处理快速滑动（即使距离不够，但速度快）
+  const velocity = absDiffX / duration
+  if (velocity > 0.5 && absDiffY < swipeMaxVertical) {
+    if (diffX > 0) {
+      nextChapter()
+    } else {
+      prevChapter()
+    }
+  }
+}
+
+// ============ 章节切换动画 ============
+const isTransitioning = ref(false)
+const transitionDirection = ref<'left' | 'right' | null>(null)
+
+// 开始切换动画
+const startChapterTransition = (direction: 'left' | 'right') => {
+  isTransitioning.value = true
+  transitionDirection.value = direction
+}
+
+// 结束切换动画
+const endChapterTransition = () => {
+  // 动画结束后清理状态
+  setTimeout(() => {
+    isTransitioning.value = false
+    transitionDirection.value = null
+  }, 50)
+}
+
+// 章节内容进入时的处理
+const onChapterEnter = () => {
+  // 如果是章节切换导致的过渡，滚动到顶部
+  if (transitionDirection.value) {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }, 10)
+  }
+}
+
 // ============ 节流函数 ============
 function throttle<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
   let lastTime = 0
@@ -136,8 +503,15 @@ const router = useRouter()
 const content = ref('')
 const isImmersiveMode = ref(false)
 const showBackToTop = ref(false)
+const scrollTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const SCROLL_THRESHOLD = 300
-const chapterIndex = computed(() => parseInt(props.chapter) || 0)
+const HIDE_DELAY = 2000 // 2秒
+const chapterIndex = computed(() => {
+  const index = parseInt(props.chapter) || 0
+  // 让用户友好的URL对应正确章节
+  // /1 对应第1章(chapters[0])，/15 对应第15章(chapters[14])
+  return Math.max(0, index - 1)
+})
 
 const book = computed(() => {
   return novelsData.novels.find(n => n.id === props.id)
@@ -147,18 +521,45 @@ const currentChapter = computed(() => {
   return book.value?.chapters?.[chapterIndex.value]
 })
 
-// 简单的 markdown 渲染
+// 目标章节（用于动画过渡显示）
+const targetChapter = computed(() => {
+  if (!isTransitioning.value || !transitionDirection.value) return null
+  const targetIndex = transitionDirection.value === 'left' 
+    ? chapterIndex.value - 1 
+    : chapterIndex.value + 1
+  return book.value?.chapters?.[targetIndex] || null
+})
+
+// 修改后的 markdown 渲染 - 支持初音色样式
 const renderedContent = computed(() => {
   if (!content.value) return ''
-  return content.value
+  
+  let html = content.value
     .replace(/# (.*)/, '<h1>$1</h1>')
     .replace(/## (.*)/, '<h2>$1</h2>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
+    
+  // 初音色渲染：检测 --- 或 *** 替换为分割线
+  html = html.replace(/^(---|\*\*\*)$/gm, '<hr class="miku-divider" style="border-color: #39c5bb;">')
+  
+  // 初音色渲染：检测 场景： 开头
+  html = html.replace(/^(场景[：:])(.+)$/gm, '<p><span class="miku-scene" style="color: #39c5bb; font-weight: bold;">$1</span>$2</p>')
+  
+  // 初音色渲染：检测 章节结束
+  html = html.replace(/^(章节结束)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em;">章节结束</div>')
+  
+  // 处理普通段落
+  html = html.replace(/\n/g, '<br>')
+  
+  return html
 })
 
 const loadContent = async () => {
   if (!currentChapter.value) return
+  
+  // 开始加载，显示加载动画
+  isLoading.value = true
+  
   try {
     const response = await fetch(`/novels/${currentChapter.value.file}`)
     content.value = await response.text()
@@ -166,6 +567,17 @@ const loadContent = async () => {
     recordReadingHistory()
   } catch (e) {
     content.value = '加载失败'
+  }
+  
+  // 内容加载完成后，关闭加载动画
+  isLoading.value = false
+  
+  // 内容加载完成后，执行滚动操作
+  // 如果有目标章节（即正在执行切换动画），则滚动到顶部
+  if (isTransitioning.value) {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }, 10)
   }
 }
 
@@ -188,9 +600,39 @@ const saveScrollPosition = throttle(() => {
   console.log(`[Scroll] Saved position for chapter ${chapterIndex.value}:`, data.scrollY)
 }, 300)
 
-// 控制回到顶部按钮显示/隐藏
+// 显示按钮并启动隐藏定时器
+const showButton = () => {
+  showBackToTop.value = true
+  startHideTimer()
+}
+
+// 启动隐藏定时器
+const startHideTimer = () => {
+  // 先清除旧的 timer
+  if (scrollTimer.value) {
+    clearTimeout(scrollTimer.value)
+    scrollTimer.value = null
+  }
+
+  // 创建新的 timer
+  scrollTimer.value = setTimeout(() => {
+    if (window.scrollY > SCROLL_THRESHOLD) {
+      showBackToTop.value = false
+    }
+  }, HIDE_DELAY)
+}
+
+// 控制回到顶部按钮显示/隐藏（滚动停止2秒后自动隐藏）
 const handleBackToTopVisibility = throttle(() => {
-  showBackToTop.value = window.scrollY > SCROLL_THRESHOLD
+  if (window.scrollY > SCROLL_THRESHOLD) {
+    showButton()
+  } else {
+    showBackToTop.value = false
+    if (scrollTimer.value) {
+      clearTimeout(scrollTimer.value)
+      scrollTimer.value = null
+    }
+  }
 }, 100)
 
 // 恢复滚动位置
@@ -215,6 +657,13 @@ const restoreScrollPosition = () => {
 // 回到顶部
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
+  // 回到顶部后立即隐藏按钮
+  showBackToTop.value = false
+  // 清除 timer
+  if (scrollTimer.value) {
+    clearTimeout(scrollTimer.value)
+    scrollTimer.value = null
+  }
   // 保存顶部位置
   saveScrollPosition()
 }
@@ -230,21 +679,58 @@ const recordReadingHistory = () => {
   if (!history.includes(chapterIndex.value)) {
     history.push(chapterIndex.value)
     // 按章节索引排序
-    history.sort((a, b) => a - b)
+    history.sort((a: number, b: number) => a - b)
     localStorage.setItem(historyKey, JSON.stringify(history))
   }
 }
 
 const prevChapter = () => {
   if (chapterIndex.value > 0) {
-    router.push(`/read/${props.id}/${chapterIndex.value - 1}`)
+    console.log('[Swipe] 右滑 - 切换到上一章')
+    // 清除自动播放计时器
+    clearAutoPlayTimer()
+    isAtBottom.value = false
+    startChapterTransition('left')
+    // URL参数 = chapterIndex + 1 (用户友好的1-based索引)
+    router.push(`/read/${props.id}/${chapterIndex.value}`)
+  } else {
+    console.log('[Swipe] 已经是第一章')
+    // 显示提示：已经是第一章
+    showSwipeHintWithText('已经是第一章了')
   }
 }
 
 const nextChapter = () => {
   if (chapterIndex.value < (book.value?.chapters?.length || 0) - 1) {
-    router.push(`/read/${props.id}/${chapterIndex.value + 1}`)
+    console.log('[Swipe] 左滑/上拉 - 切换到下一章')
+    // 清除自动播放计时器
+    clearAutoPlayTimer()
+    isAtBottom.value = false
+    startChapterTransition('right')
+    // URL参数 = chapterIndex + 1 (用户友好的1-based索引)
+    router.push(`/read/${props.id}/${chapterIndex.value + 2}`)
+  } else {
+    console.log('[Swipe] 已经是最后一章')
+    // 显示提示：已经是最后一章
+    showSwipeHintWithText('已经是最后一章了')
+    // 关闭自动播放
+    if (isAutoPlay.value) {
+      isAutoPlay.value = false
+      clearAutoPlayTimer()
+    }
   }
+}
+
+// 显示滑动提示文字
+const showSwipeHintWithText = (text: string) => {
+  // 使用 toast 或简单的提示
+  const toast = document.createElement('div')
+  toast.className = 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 bg-black/70 text-white rounded-lg z-[200] text-sm'
+  toast.textContent = text
+  document.body.appendChild(toast)
+  setTimeout(() => {
+    toast.remove()
+  }, 1500)
 }
 
 // 切换沉浸模式
@@ -255,7 +741,7 @@ const toggleImmersiveMode = () => {
 }
 
 // 处理内容区域点击 - 点击切换沉浸模式
-const handleContentClick = (event: MouseEvent) => {
+const handleContentClick = () => {
   // 点击内容区域切换沉浸模式
   toggleImmersiveMode()
 }
@@ -273,6 +759,35 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
+// 页面可见性变化处理（修复切换标签页后 timer 失效问题）
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'hidden') {
+    // 页面隐藏时清除 timer
+    if (scrollTimer.value) {
+      clearTimeout(scrollTimer.value)
+      scrollTimer.value = null
+    }
+    if (autoPlayTimer.value) {
+      clearTimeout(autoPlayTimer.value)
+      autoPlayTimer.value = null
+    }
+  } else if (document.visibilityState === 'visible' && window.scrollY > SCROLL_THRESHOLD) {
+    // 页面重新可见时，重新启动 timer
+    startHideTimer()
+    // 如果自动播放开启且在底部，重新启动计时器
+    if (isAutoPlay.value && isAtBottom.value) {
+      startAutoPlayTimer()
+    }
+  }
+}
+
+// 滚动事件处理（包含自动播放检测）
+const handleScroll = throttle(() => {
+  saveScrollPosition()
+  handleBackToTopVisibility()
+  checkIfAtBottom()
+}, 100)
+
 onMounted(() => {
   // 恢复用户偏好
   const savedMode = localStorage.getItem('immersiveMode')
@@ -283,13 +798,13 @@ onMounted(() => {
   // 恢复当前章节的滚动位置
   restoreScrollPosition()
 
-  // 添加滚动事件监听（节流）
-  window.addEventListener('scroll', saveScrollPosition)
-
-  // 添加回到顶部按钮显示/隐藏监听
-  window.addEventListener('scroll', handleBackToTopVisibility)
+  // 添加滚动事件监听（包含自动播放检测）
+  window.addEventListener('scroll', handleScroll)
   // 初始化按钮状态
   handleBackToTopVisibility()
+
+  // 页面可见性变化处理
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   window.addEventListener('keydown', handleKeyDown)
 })
@@ -298,17 +813,29 @@ onUnmounted(() => {
   // 保存当前滚动位置
   saveScrollPosition()
 
-  window.removeEventListener('scroll', saveScrollPosition)
-  window.removeEventListener('scroll', handleBackToTopVisibility)
+  // 清理 timer
+  if (scrollTimer.value) {
+    clearTimeout(scrollTimer.value)
+  }
+  if (swipeHintTimer.value) {
+    clearTimeout(swipeHintTimer.value)
+  }
+  if (autoPlayTimer.value) {
+    clearTimeout(autoPlayTimer.value)
+  }
+
+  window.removeEventListener('scroll', handleScroll)
   window.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 watch(currentChapter, loadContent, { immediate: true })
 
 // 监听章节变化，保存旧章节位置并恢复新章节位置
-watch(chapterIndex, (newIndex, oldIndex) => {
-  // 保存旧章节的滚动位置
-  if (oldIndex !== undefined) {
+watch(chapterIndex, (_newIndex, oldIndex) => {
+  // 如果是通过正常导航（不是页面刷新），记录位置
+  if (oldIndex !== undefined && !isTransitioning.value) {
+    // 保存旧章节的滚动位置
     const oldKey = getScrollPositionKey(props.id, oldIndex)
     localStorage.setItem(oldKey, JSON.stringify({
       scrollY: window.scrollY,
@@ -318,7 +845,10 @@ watch(chapterIndex, (newIndex, oldIndex) => {
   }
   
   // 恢复新章节的滚动位置
-  restoreScrollPosition()
+  // 只有在非过渡状态下才恢复位置
+  if (!isTransitioning.value) {
+    restoreScrollPosition()
+  }
 })
 </script>
 
@@ -339,6 +869,80 @@ header, .fixed.bottom-0 {
   h1 {
     margin-top: 0;
   }
+}
+
+/* ========================================
+   初音色样式 (Miku Color #39c5bb)
+   ======================================== */
+.miku-divider {
+  border: none;
+  border-top: 2px solid #39c5bb;
+  margin: 2em 0;
+}
+
+.miku-scene {
+  color: #39c5bb;
+  font-weight: bold;
+}
+
+.miku-end {
+  color: #39c5bb;
+  text-align: center;
+  font-size: 1.2em;
+  margin: 2em 0;
+}
+
+/* ========================================
+   自动播放控制栏样式
+   ======================================== */
+.auto-play-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--miku-bg-secondary);
+  border: 1px solid var(--miku-border);
+  border-radius: 0.5rem;
+}
+
+.auto-play-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.auto-play-btn:hover {
+  background-color: rgba(57, 197, 187, 0.1);
+}
+
+.speed-selector {
+  display: flex;
+  gap: 0.125rem;
+}
+
+.speed-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  background-color: var(--miku-bg);
+  border: 1px solid var(--miku-border);
+  color: var(--miku-text-muted);
+  transition: all 0.2s;
+}
+
+.speed-btn:hover {
+  border-color: var(--miku-primary);
+  color: var(--miku-primary);
+}
+
+.speed-btn.active {
+  background-color: #39c5bb;
+  color: white;
+  border-color: #39c5bb;
 }
 
 /* ========================================
@@ -441,6 +1045,15 @@ header, .fixed.bottom-0 {
     width: 1.125rem;
     height: 1.125rem;
   }
+  
+  .speed-btn {
+    padding: 0.125rem 0.375rem;
+    font-size: 0.625rem;
+  }
+  
+  .auto-play-controls {
+    padding: 0.125rem 0.375rem;
+  }
 }
 
 /* 大屏幕增强 */
@@ -467,6 +1080,183 @@ header, .fixed.bottom-0 {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
+
+/* ========================================
+   章节切换动画样式
+   ======================================== */
+
+/* 加载指示器样式 */
+.loading-indicator {
+  @apply flex flex-col items-center justify-center;
+  @apply min-h-[300px] py-12;
+  @apply text-center;
+}
+
+.loading-spinner {
+  @apply w-10 h-10 mb-4;
+  @apply rounded-full;
+  @apply border-2 border-miku;
+  @apply border-t-miku-primary;
+  @apply animate-spin;
+}
+
+.loading-text {
+  @apply flex flex-col items-center gap-2;
+  @apply text-miku-muted;
+}
+
+.loading-label {
+  @apply text-sm font-medium;
+}
+
+.loading-chapter-title {
+  @apply text-base font-semibold text-miku-primary;
+  @apply max-w-md px-4;
+  @apply truncate;
+}
+
+.loading-chapter-number {
+  @apply text-base;
+  color: var(--miku-text);
+}
+
+/* 章节内容容器 */
+.chapter-content {
+  @apply w-full;
+}
+
+/* Vue Transition 动画 - 淡入淡出 */
+.chapter-fade-enter-active,
+.chapter-fade-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.chapter-fade-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.chapter-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* 从目录点击时的淡入效果 */
+.chapter-fade-enter-active {
+  transition-delay: 0.05s;
+}
+
+/* 加载状态的脉冲效果 */
+@keyframes pulse-miku {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.loading-indicator .loading-spinner {
+  animation: spin 0.8s linear infinite, pulse-miku 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   滑动提示样式
+   ======================================== */
+
+.swipe-hint-overlay {
+  @apply fixed inset-0 z-[150] flex flex-col items-center justify-center;
+  @apply pointer-events-none;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.swipe-hint-overlay.left {
+  @apply items-end pr-20;
+}
+
+.swipe-hint-overlay.right {
+  @apply items-start pl-20;
+}
+
+.swipe-hint-icon {
+  @apply w-20 h-20 rounded-full flex items-center justify-center mb-4;
+  @apply text-white shadow-lg;
+  @apply animate-pulse;
+  background-color: rgba(57, 197, 187, 0.9);
+}
+
+.swipe-hint-text {
+  @apply text-lg font-semibold text-white drop-shadow-md;
+  @apply px-4 py-2 rounded-full;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+   上拉加载提示样式
+   ======================================== */
+
+.pull-up-hint-overlay {
+  @apply fixed bottom-0 left-0 right-0 z-[150] flex items-center justify-center;
+  @apply pointer-events-none;
+  height: 120px;
+  background: linear-gradient(to top, rgba(57, 197, 187, 0.15), transparent);
+}
+
+.pull-up-hint-content {
+  @apply flex flex-col items-center gap-2;
+  @apply text-miku-primary font-medium;
+  @apply animate-bounce;
+}
+
+.pull-up-hint-text {
+  @apply text-sm;
+}
+
+/* 淡入淡出过渡 */
+.fade-overlay-enter-active,
+.fade-overlay-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-overlay-enter-from,
+.fade-overlay-leave-to {
+  opacity: 0;
+}
+
+/* ========================================
+   触摸滑动优化
+   ======================================== */
+
+/* 防止触摸时的默认行为 */
+.chapter-content {
+  @apply touch-pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 允许文本选择（长按复制） */
+.chapter-content :deep(*) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 移动端滑动区域优化 */
+@media (hover: none) {
+  .markdown-body {
+    @apply cursor-default;
+  }
+}
 </style>
 
 <style>
@@ -478,5 +1268,24 @@ header, .fixed.bottom-0 {
 
 .markdown-body :deep(h2) {
   @apply text-xl my-5;
+}
+
+/* 初音色样式 - 全局作用域 */
+:deep(.miku-divider) {
+  border: none;
+  border-top: 2px solid #39c5bb;
+  margin: 2em 0;
+}
+
+:deep(.miku-scene) {
+  color: #39c5bb;
+  font-weight: bold;
+}
+
+:deep(.miku-end) {
+  color: #39c5bb;
+  text-align: center;
+  font-size: 1.2em;
+  margin: 2em 0;
 }
 </style>
