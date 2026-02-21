@@ -542,11 +542,15 @@ const renderedContent = computed(() => {
   // 初音色渲染：检测 --- 或 *** 替换为分割线（降低宽度到1px）
   html = html.replace(/^(---|\*\*\*)$/gm, '<hr class="miku-divider" style="border-top: 1px solid #39c5bb;">')
   
-  // 初音色渲染：检测 【场景】或 场景： 开头
-  html = html.replace(/^(【场景】|场景[：:])(.+)$/gm, '<p><span class="miku-scene" style="color: #39c5bb; font-weight: bold;">$1</span>$2</p>')
+  // 初音色渲染：检测 【场景：...】或 ## 场景X：... 格式
+  html = html.replace(/^(\*\*【场景[：:].*?】\*\*)$/gm, '<div class="miku-scene" style="color: #39c5bb; font-weight: bold; margin: 1em 0;">$1</div>')
+  html = html.replace(/^(## 场景[一二三四五六七八九十\d]+[：:].+)$/gm, '<h2 class="miku-scene" style="color: #39c5bb;">$1</h2>')
   
-  // 初音色渲染：检测 章节结束 或 （第XX章 完）
-  html = html.replace(/^(章节结束|（第\d+章 完）)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em;">$1</div>')
+  // 初音色渲染：检测 章节结束（3种格式）
+  // 格式1: 【第四章完】或【第100章·完】
+  html = html.replace(/^(\*\*【第\d+章[·\s]?完】\*\*)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
+  // 格式2: （第6章 完）
+  html = html.replace(/^(\*\*[（(]第\d+章\s*完[）)]\*\*)$/gm, '<div class="miku-end" style="color: #39c5bb; text-align: center; font-size: 1.2em; margin: 2em 0;">$1</div>')
   
   // 处理普通段落
   html = html.replace(/\n/g, '<br>')
