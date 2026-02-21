@@ -4,6 +4,127 @@
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd"
   >
+    <!-- 遮罩层 - 点击关闭抽屉 -->
+    <Transition name="fade-overlay">
+      <div v-if="currentDrawer" class="drawer-overlay" @click="closeDrawer"></div>
+    </Transition>
+
+    <!-- 目录抽屉 -->
+    <Transition name="drawer-slide">
+      <div v-if="currentDrawer === 'toc'" class="bottom-drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">目录</span>
+          <button class="drawer-close" @click="closeDrawer">✕</button>
+        </div>
+        <div class="drawer-content toc-list">
+          <div
+            v-for="(chapter, index) in book?.chapters"
+            :key="index"
+            class="toc-item"
+            :class="{ active: index === chapterIndex }"
+            @click="goToChapter(index)"
+          >
+            <span class="toc-number">第{{ index + 1 }}章</span>
+            <span class="toc-name">{{ chapter.title }}</span>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 自动播放抽屉 -->
+    <Transition name="drawer-slide">
+      <div v-if="currentDrawer === 'autoplay'" class="bottom-drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">自动播放</span>
+          <button class="drawer-close" @click="closeDrawer">✕</button>
+        </div>
+        <div class="drawer-content autoplay-controls">
+          <div class="speed-section">
+            <span class="section-label">播放速度</span>
+            <div class="speed-selector-drawer">
+              <button
+                class="speed-btn-drawer"
+                :class="{ active: autoPlaySpeed === 'slow' }"
+                @click="setAutoPlaySpeed('slow')"
+              >
+                <span class="speed-name">慢</span>
+                <span class="speed-value">5秒</span>
+              </button>
+              <button
+                class="speed-btn-drawer"
+                :class="{ active: autoPlaySpeed === 'medium' }"
+                @click="setAutoPlaySpeed('medium')"
+              >
+                <span class="speed-name">中</span>
+                <span class="speed-value">3秒</span>
+              </button>
+              <button
+                class="speed-btn-drawer"
+                :class="{ active: autoPlaySpeed === 'fast' }"
+                @click="setAutoPlaySpeed('fast')"
+              >
+                <span class="speed-name">快</span>
+                <span class="speed-value">1.5秒</span>
+              </button>
+            </div>
+          </div>
+          <div class="play-control-section">
+            <button class="play-toggle-btn" @click="toggleAutoPlay">
+              <svg v-if="!isAutoPlay" class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <svg v-else class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+              <span>{{ isAutoPlay ? '暂停播放' : '开始播放' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 字号调节抽屉 -->
+    <Transition name="drawer-slide">
+      <div v-if="currentDrawer === 'fontsize'" class="bottom-drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">字号调节</span>
+          <button class="drawer-close" @click="closeDrawer">✕</button>
+        </div>
+        <div class="drawer-content fontsize-controls">
+          <div class="fontsize-preview" :style="{ fontSize: fontSize + 'px' }">
+            <span>Aa</span>
+            <span class="fontsize-value">{{ fontSize }}px</span>
+          </div>
+          <div class="fontsize-buttons">
+            <button
+              class="fontsize-btn"
+              :disabled="fontSize <= minFontSize"
+              @click="decreaseFontSize"
+            >
+              <span class="fontsize-btn-text">A-</span>
+              <span class="fontsize-btn-hint">减小</span>
+            </button>
+            <div class="fontsize-slider">
+              <div class="fontsize-track">
+                <div
+                  class="fontsize-fill"
+                  :style="{ width: ((fontSize - minFontSize) / (maxFontSize - minFontSize) * 100) + '%' }"
+                ></div>
+              </div>
+            </div>
+            <button
+              class="fontsize-btn"
+              :disabled="fontSize >= maxFontSize"
+              @click="increaseFontSize"
+            >
+              <span class="fontsize-btn-text">A+</span>
+              <span class="fontsize-btn-hint">增大</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 滑动提示遮罩 -->
     <Transition name="fade-overlay">
       <div v-if="showSwipeHint" class="swipe-hint-overlay" :class="swipeHintDirection">
@@ -86,7 +207,8 @@
         <!-- 章节内容 -->
         <div v-else-if="content" key="content" class="chapter-content">
           <div 
-            class="markdown-body leading-relaxed text-base cursor-pointer" 
+            class="markdown-body leading-relaxed cursor-pointer" 
+            :style="{ fontSize: fontSize + 'px', lineHeight: '1.8' }"
             v-html="renderedContent" 
             @click="handleContentClick" 
           />
@@ -120,46 +242,44 @@
         <span class="nav-tooltip">上一章</span>
       </button>
 
-      <!-- 中间：目录 + 自动播放控制 -->
-      <div class="flex items-center gap-2">
-        <!-- 自动播放控制栏 -->
-        <div v-if="isAutoPlay" class="auto-play-controls">
-          <button @click="toggleAutoPlay" class="auto-play-btn" title="暂停自动播放">
-            <span class="text-lg">⏸️</span>
-          </button>
-          <div class="speed-selector">
-            <button 
-              @click="setAutoPlaySpeed('slow')" 
-              class="speed-btn"
-              :class="{ active: autoPlaySpeed === 'slow' }"
-              title="慢速 (5秒)"
-            >慢</button>
-            <button 
-              @click="setAutoPlaySpeed('medium')" 
-              class="speed-btn"
-              :class="{ active: autoPlaySpeed === 'medium' }"
-              title="中速 (3秒)"
-            >中</button>
-            <button 
-              @click="setAutoPlaySpeed('fast')" 
-              class="speed-btn"
-              :class="{ active: autoPlaySpeed === 'fast' }"
-              title="快速 (1.5秒)"
-            >快</button>
-          </div>
-        </div>
-        <button v-else @click="toggleAutoPlay" class="nav-btn" title="自动播放" aria-label="自动播放">
-          <span class="text-lg">▶️</span>
-          <span class="nav-tooltip">自动播放</span>
-        </button>
-
-        <router-link :to="`/book/${id}?chapter=${chapterIndex + 1}`" class="nav-btn" title="目录" aria-label="目录">
+      <!-- 中间：目录 + 字号 + 自动播放 -->
+      <div class="flex items-center gap-1">
+        <!-- 目录按钮 -->
+        <button @click="openDrawer('toc')" class="nav-btn" title="目录" aria-label="目录">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
           </svg>
           <span class="nav-tooltip">目录</span>
-        </router-link>
+        </button>
+
+        <!-- 字号调节按钮 -->
+        <button @click="openDrawer('fontsize')" class="nav-btn" title="字号" aria-label="字号">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7V4h16v3"/>
+            <path d="M9 20h6"/>
+            <path d="M12 4v16"/>
+          </svg>
+          <span class="nav-tooltip">字号</span>
+        </button>
+
+        <!-- 自动播放按钮 -->
+        <button 
+          @click="openDrawer('autoplay')" 
+          class="nav-btn"
+          :class="{ 'nav-btn-active': isAutoPlay }"
+          title="自动播放" 
+          aria-label="自动播放"
+        >
+          <svg v-if="!isAutoPlay" class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          <svg v-else class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>
+          <span class="nav-tooltip">自动播放</span>
+        </button>
       </div>
 
       <!-- 右侧：下一章 -->
@@ -223,6 +343,68 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import novelsData from '../../../public/novels.json'
+
+// ============ 抽屉相关 ============
+type DrawerType = 'toc' | 'autoplay' | 'fontsize' | null
+const currentDrawer = ref<DrawerType>(null)
+
+const openDrawer = (type: DrawerType) => {
+  currentDrawer.value = type
+}
+
+const closeDrawer = () => {
+  currentDrawer.value = null
+}
+
+// 跳转到指定章节
+const goToChapter = (index: number) => {
+  closeDrawer()
+  if (index !== chapterIndex.value) {
+    router.push(`/read/${props.id}/${index + 1}`)
+  }
+}
+
+// ============ 字号调节相关 ============
+const DEFAULT_FONT_SIZE = 16
+const MIN_FONT_SIZE = 12
+const MAX_FONT_SIZE = 24
+const FONT_SIZE_KEY = 'novel_reader_font_size'
+
+const fontSize = ref(DEFAULT_FONT_SIZE)
+const minFontSize = MIN_FONT_SIZE
+const maxFontSize = MAX_FONT_SIZE
+
+// 加载保存的字号
+const loadFontSize = () => {
+  const saved = localStorage.getItem(FONT_SIZE_KEY)
+  if (saved) {
+    const size = parseInt(saved, 10)
+    if (!isNaN(size) && size >= MIN_FONT_SIZE && size <= MAX_FONT_SIZE) {
+      fontSize.value = size
+    }
+  }
+}
+
+// 保存字号
+const saveFontSize = () => {
+  localStorage.setItem(FONT_SIZE_KEY, fontSize.value.toString())
+}
+
+// 减小字号
+const decreaseFontSize = () => {
+  if (fontSize.value > MIN_FONT_SIZE) {
+    fontSize.value = Math.max(MIN_FONT_SIZE, fontSize.value - 2)
+    saveFontSize()
+  }
+}
+
+// 增大字号
+const increaseFontSize = () => {
+  if (fontSize.value < MAX_FONT_SIZE) {
+    fontSize.value = Math.min(MAX_FONT_SIZE, fontSize.value + 2)
+    saveFontSize()
+  }
+}
 
 // ============ 加载动画相关 ============
 const isLoading = ref(false)
@@ -553,11 +735,18 @@ const renderedContent = computed(() => {
   // 然后再转换普通粗体
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     
-  // 初音色渲染：检测 --- 或 *** 替换为分割线（降低宽度到1px）
-  html = html.replace(/^(---|\*\*\*)$/gm, '<hr style="border: none; border-top: 1px solid #39c5bb; margin: 2em 0;">')
+  // 初音色渲染：检测 --- 或 *** 替换为分割线（降低宽度到1px），并移除后续换行
+  html = html.replace(/^(---|\*\*\*)\n*$/gm, '<hr style="border: none; border-top: 1px solid #39c5bb; margin: 2em 0;">')
   
-  // 处理普通段落
+  // 处理普通段落（但在特定元素后不添加额外换行）
   html = html.replace(/\n/g, '<br>')
+  
+  // 移除分割线后的 <br>
+  html = html.replace(/(<hr[^\u003e]*>)<br>*/g, '$1')
+  // 移除场景div后的 <br>
+  html = html.replace(/(<div style="color: #39c5bb[^"]*">.*?)<\/div><br>*/g, '$1</div>')
+  // 移除章节结束div后的 <br>
+  html = html.replace(/(<div style="color: #39c5bb; text-align: center[^"]*">.*?)<\/div><br>*/g, '$1</div>')
   
   return html
 })
@@ -797,6 +986,9 @@ const handleScroll = throttle(() => {
 }, 100)
 
 onMounted(() => {
+  // 加载保存的字号
+  loadFontSize()
+
   // 恢复用户偏好
   const savedMode = localStorage.getItem('immersiveMode')
   if (savedMode !== null) {
@@ -861,10 +1053,9 @@ watch(chapterIndex, (_newIndex, oldIndex) => {
 </script>
 
 <style scoped>
-/* 沉浸模式样式 */
-.immersive-mode .markdown-body {
-  font-size: 1.1rem;
-  line-height: 1.8;
+/* 沉浸模式样式 - 仅调整布局，不调整字号 */
+.immersive-mode {
+  /* 沉浸模式下的样式调整 */
 }
 
 /* 确保过渡动画流畅 */
@@ -901,76 +1092,237 @@ header, .fixed.bottom-0 {
 }
 
 /* ========================================
-   自动播放控制栏样式
+   底部上拉抽屉样式
    ======================================== */
-.auto-play-controls {
+
+.drawer-overlay {
+  @apply fixed inset-0 z-[150];
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.bottom-drawer {
+  @apply fixed bottom-0 left-0 right-0 z-[160];
+  @apply bg-miku rounded-t-2xl;
+  @apply shadow-2xl;
+  max-height: 70vh;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  background-color: var(--miku-bg-secondary);
-  border: 1px solid var(--miku-border);
-  border-radius: 0.5rem;
+  flex-direction: column;
 }
 
-.auto-play-btn {
-  width: 2.25rem;
-  height: 2.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
+.drawer-header {
+  @apply flex items-center justify-between px-4 py-3;
+  @apply border-b border-miku;
 }
 
-.auto-play-btn:hover {
-  background-color: rgba(57, 197, 187, 0.1);
-}
-
-.speed-selector {
-  display: flex;
-  gap: 0.125rem;
-}
-
-.speed-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  border-radius: 0.25rem;
-  background-color: var(--miku-bg);
-  border: 1px solid var(--miku-border);
-  color: var(--miku-text-muted);
-  transition: all 0.2s;
-}
-
-.speed-btn:hover {
-  border-color: var(--miku-primary);
+.drawer-title {
+  @apply text-lg font-semibold;
   color: var(--miku-primary);
 }
 
-.speed-btn.active {
-  background-color: #39c5bb;
-  color: white;
+.drawer-close {
+  @apply w-8 h-8 flex items-center justify-center rounded-full;
+  @apply text-miku-muted hover:text-miku-primary;
+  @apply transition-colors;
+  font-size: 1.25rem;
+}
+
+.drawer-content {
+  @apply flex-1 overflow-y-auto p-4;
+}
+
+/* 抽屉滑入动画 */
+.drawer-slide-enter-active,
+.drawer-slide-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.drawer-slide-enter-from,
+.drawer-slide-leave-to {
+  transform: translateY(100%);
+}
+
+/* 目录列表样式 */
+.toc-list {
+  @apply space-y-1;
+}
+
+.toc-item {
+  @apply flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer;
+  @apply transition-colors;
+  @apply hover:bg-miku-secondary;
+}
+
+.toc-item.active {
+  background: rgba(57, 197, 187, 0.15);
+}
+
+.toc-item.active .toc-number,
+.toc-item.active .toc-name {
+  color: #39c5bb;
+}
+
+.toc-number {
+  @apply text-sm flex-shrink-0;
+  color: var(--miku-text-muted);
+}
+
+.toc-name {
+  @apply text-sm truncate;
+  color: var(--miku-text);
+}
+
+/* 自动播放控制样式 */
+.autoplay-controls {
+  @apply space-y-6;
+}
+
+.speed-section {
+  @apply space-y-3;
+}
+
+.section-label {
+  @apply text-sm font-medium block;
+  color: var(--miku-text-muted);
+}
+
+.speed-selector-drawer {
+  @apply grid grid-cols-3 gap-3;
+}
+
+.speed-btn-drawer {
+  @apply flex flex-col items-center gap-1 p-4 rounded-xl;
+  @apply border border-miku;
+  @apply bg-miku-secondary;
+  @apply transition-all;
+}
+
+.speed-btn-drawer:hover {
+  border-color: var(--miku-primary);
+}
+
+.speed-btn-drawer.active {
+  background: rgba(57, 197, 187, 0.15);
   border-color: #39c5bb;
 }
 
+.speed-btn-drawer .speed-name {
+  @apply text-base font-semibold;
+  color: var(--miku-text);
+}
+
+.speed-btn-drawer.active .speed-name {
+  color: #39c5bb;
+}
+
+.speed-btn-drawer .speed-value {
+  @apply text-xs;
+  color: var(--miku-text-muted);
+}
+
+.speed-btn-drawer.active .speed-value {
+  color: #39c5bb;
+}
+
+.play-control-section {
+  @apply pt-2;
+}
+
+.play-toggle-btn {
+  @apply w-full flex items-center justify-center gap-2 py-4 rounded-xl;
+  @apply font-semibold text-white;
+  background: #39c5bb;
+  @apply transition-all;
+}
+
+.play-toggle-btn:hover {
+  opacity: 0.9;
+}
+
+.play-toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.play-icon {
+  @apply w-6 h-6;
+}
+
+/* 字号调节样式 */
+.fontsize-controls {
+  @apply space-y-6;
+}
+
+.fontsize-preview {
+  @apply flex flex-col items-center justify-center gap-2 py-8;
+  @apply bg-miku-secondary rounded-xl;
+}
+
+.fontsize-value {
+  @apply text-sm;
+  color: var(--miku-text-muted);
+}
+
+.fontsize-buttons {
+  @apply flex items-center gap-4;
+}
+
+.fontsize-btn {
+  @apply flex flex-col items-center gap-1;
+  @apply w-16 h-16 rounded-xl;
+  @apply bg-miku-secondary border border-miku;
+  @apply transition-all;
+}
+
+.fontsize-btn:hover:not(:disabled) {
+  border-color: var(--miku-primary);
+}
+
+.fontsize-btn:disabled {
+  @apply opacity-30 cursor-not-allowed;
+}
+
+.fontsize-btn-text {
+  @apply text-xl font-bold;
+  color: #39c5bb;
+}
+
+.fontsize-btn-hint {
+  @apply text-xs;
+  color: var(--miku-text-muted);
+}
+
+.fontsize-slider {
+  @apply flex-1 px-2;
+}
+
+.fontsize-track {
+  @apply h-2 rounded-full;
+  background: var(--miku-bg);
+  border: 1px solid var(--miku-border);
+}
+
+.fontsize-fill {
+  @apply h-full rounded-full;
+  background: #39c5bb;
+  transition: width 0.2s ease;
+}
+
 /* ========================================
-   底部图标导航栏样式
+   底部图标导航栏样式 - 无边框初色
    ======================================== */
 
-/* 图标按钮基础样式 */
+/* 图标按钮基础样式 - 无边框透明背景 */
 .nav-btn {
-  @apply relative flex items-center justify-center w-11 h-11 rounded-xl cursor-pointer transition-all duration-200;
-  @apply bg-miku-secondary border border-miku;
-  @apply text-miku;
+  @apply relative flex items-center justify-center w-11 h-11 rounded-xl cursor-pointer;
+  @apply border-none bg-transparent;
+  @apply transition-all duration-200;
+  color: #39c5bb;
   @apply active:scale-95;
   @apply touch-manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 .nav-btn:hover {
-  border-color: var(--miku-primary);
-  color: var(--miku-primary);
-  background-color: rgba(57, 197, 187, 0.1);
+  opacity: 0.8;
 }
 
 /* 上一章/下一章特殊间距 */
@@ -985,6 +1337,11 @@ header, .fixed.bottom-0 {
 /* 禁用状态 */
 .nav-btn-disabled {
   @apply opacity-30 cursor-not-allowed pointer-events-none;
+}
+
+/* 激活状态（自动播放中） */
+.nav-btn-active {
+  background: rgba(57, 197, 187, 0.15);
 }
 
 /* 图标尺寸 */
@@ -1026,15 +1383,11 @@ header, .fixed.bottom-0 {
 /* 移动端触摸优化 */
 @media (hover: none) {
   .nav-btn:hover {
-    border-color: var(--miku-border);
-    color: var(--miku-text);
-    background-color: var(--miku-bg-secondary);
+    opacity: 1;
   }
   
   .nav-btn:active {
-    border-color: var(--miku-primary);
-    color: var(--miku-primary);
-    background-color: rgba(57, 197, 187, 0.2);
+    opacity: 0.8;
   }
   
   /* 移动端隐藏工具提示（触摸设备不需要hover提示） */
@@ -1053,15 +1406,6 @@ header, .fixed.bottom-0 {
     width: 1.125rem;
     height: 1.125rem;
   }
-  
-  .speed-btn {
-    padding: 0.125rem 0.375rem;
-    font-size: 0.625rem;
-  }
-  
-  .auto-play-controls {
-    padding: 0.125rem 0.375rem;
-  }
 }
 
 /* 大屏幕增强 */
@@ -1078,7 +1422,7 @@ header, .fixed.bottom-0 {
 /* 聚焦样式（无障碍支持） */
 .nav-btn:focus-visible {
   @apply outline-none ring-2 ring-offset-2;
-  --tw-ring-color: var(--miku-primary);
+  --tw-ring-color: #39c5bb;
   --tw-ring-offset-color: var(--miku-bg);
 }
 
@@ -1086,6 +1430,10 @@ header, .fixed.bottom-0 {
 @supports (padding: max(0px)) {
   .fixed.bottom-0 {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  
+  .bottom-drawer {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
