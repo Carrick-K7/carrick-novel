@@ -95,31 +95,16 @@
             <span>Aa</span>
             <span class="fontsize-value">{{ fontSize }}px</span>
           </div>
-          <div class="fontsize-buttons">
-            <button
-              class="fontsize-btn"
-              :disabled="fontSize <= minFontSize"
-              @click="decreaseFontSize"
-            >
-              <span class="fontsize-btn-text">A-</span>
-              <span class="fontsize-btn-hint">减小</span>
-            </button>
-            <div class="fontsize-slider">
-              <div class="fontsize-track">
-                <div
-                  class="fontsize-fill"
-                  :style="{ width: ((fontSize - minFontSize) / (maxFontSize - minFontSize) * 100) + '%' }"
-                ></div>
-              </div>
-            </div>
-            <button
-              class="fontsize-btn"
-              :disabled="fontSize >= maxFontSize"
-              @click="increaseFontSize"
-            >
-              <span class="fontsize-btn-text">A+</span>
-              <span class="fontsize-btn-hint">增大</span>
-            </button>
+          <div class="fontsize-slider-wrapper">
+            <input
+              type="range"
+              class="fontsize-range"
+              :min="minFontSize"
+              :max="maxFontSize"
+              step="1"
+              v-model.number="fontSize"
+              @input="onFontSizeChange"
+            />
           </div>
         </div>
       </div>
@@ -390,20 +375,9 @@ const saveFontSize = () => {
   localStorage.setItem(FONT_SIZE_KEY, fontSize.value.toString())
 }
 
-// 减小字号
-const decreaseFontSize = () => {
-  if (fontSize.value > MIN_FONT_SIZE) {
-    fontSize.value = Math.max(MIN_FONT_SIZE, fontSize.value - 2)
-    saveFontSize()
-  }
-}
-
-// 增大字号
-const increaseFontSize = () => {
-  if (fontSize.value < MAX_FONT_SIZE) {
-    fontSize.value = Math.min(MAX_FONT_SIZE, fontSize.value + 2)
-    saveFontSize()
-  }
+// 字号滑块变化时保存
+const onFontSizeChange = () => {
+  saveFontSize()
 }
 
 // ============ 加载动画相关 ============
@@ -1104,7 +1078,7 @@ header, .fixed.bottom-0 {
   @apply fixed bottom-0 left-0 right-0 z-[160];
   @apply bg-miku rounded-t-2xl;
   @apply shadow-2xl;
-  max-height: 70vh;
+  max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
 }
@@ -1261,49 +1235,65 @@ header, .fixed.bottom-0 {
   color: var(--miku-text-muted);
 }
 
-.fontsize-buttons {
-  @apply flex items-center gap-4;
+/* 字号滑块样式 */
+.fontsize-slider-wrapper {
+  @apply px-4 py-2;
 }
 
-.fontsize-btn {
-  @apply flex flex-col items-center gap-1;
-  @apply w-16 h-16 rounded-xl;
-  @apply bg-miku-secondary border border-miku;
-  @apply transition-all;
+.fontsize-range {
+  @apply w-full h-2 rounded-full cursor-pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--miku-bg);
+  border: 1px solid var(--miku-border);
+  outline: none;
 }
 
-.fontsize-btn:hover:not(:disabled) {
-  border-color: var(--miku-primary);
+/* Webkit (Chrome, Safari) 滑块轨道 */
+.fontsize-range::-webkit-slider-runnable-track {
+  @apply h-2 rounded-full;
+  background: var(--miku-bg);
 }
 
-.fontsize-btn:disabled {
-  @apply opacity-30 cursor-not-allowed;
+/* Webkit 滑块拇指 */
+.fontsize-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  @apply w-6 h-6 -mt-2 rounded-full cursor-pointer;
+  background: #39c5bb;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.fontsize-btn-text {
-  @apply text-xl font-bold;
-  color: #39c5bb;
+.fontsize-range::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(57, 197, 187, 0.4);
 }
 
-.fontsize-btn-hint {
-  @apply text-xs;
-  color: var(--miku-text-muted);
+.fontsize-range::-webkit-slider-thumb:active {
+  transform: scale(0.95);
 }
 
-.fontsize-slider {
-  @apply flex-1 px-2;
-}
-
-.fontsize-track {
+/* Firefox 滑块轨道 */
+.fontsize-range::-moz-range-track {
   @apply h-2 rounded-full;
   background: var(--miku-bg);
   border: 1px solid var(--miku-border);
 }
 
-.fontsize-fill {
-  @apply h-full rounded-full;
+/* Firefox 滑块拇指 */
+.fontsize-range::-moz-range-thumb {
+  @apply w-6 h-6 rounded-full cursor-pointer;
   background: #39c5bb;
-  transition: width 0.2s ease;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fontsize-range::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(57, 197, 187, 0.4);
 }
 
 /* ========================================
@@ -1479,6 +1469,8 @@ header, .fixed.bottom-0 {
 /* 章节内容容器 */
 .chapter-content {
   @apply w-full;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* Vue Transition 动画 - 淡入淡出 */
