@@ -1,4 +1,4 @@
-# T-026: Novel PWA + 离线缓存
+# T-004: Novel PWA + 离线缓存
 
 ## 目标
 将 Novel 项目转换为 PWA，支持离线缓存阅读
