@@ -31,6 +31,16 @@
       </div>
     </Transition>
 
+    <!-- 批量下载抽屉 -->
+    <DownloadPanel
+      :show="currentDrawer === 'download'"
+      :book-title="book?.title || ''"
+      :book-id="props.id"
+      :chapters="book?.chapters || []"
+      :current-chapter="chapterIndex"
+      @close="closeDrawer"
+    />
+
     <!-- 自动播放抽屉 -->
     <Transition name="drawer-slide">
       <div v-if="currentDrawer === 'autoplay'" class="bottom-drawer">
@@ -227,7 +237,7 @@
         <span class="nav-tooltip">上一章</span>
       </button>
 
-      <!-- 中间：目录 + 字号 + 自动播放 -->
+      <!-- 中间：目录 + 字号 + 自动播放 + 下载 -->
       <div class="flex items-center gap-1">
         <!-- 目录按钮 -->
         <button @click="openDrawer('toc')" class="nav-btn" title="目录" aria-label="目录">
@@ -264,6 +274,21 @@
             <rect x="14" y="4" width="4" height="16"/>
           </svg>
           <span class="nav-tooltip">自动播放</span>
+        </button>
+
+        <!-- 批量下载按钮 -->
+        <button 
+          @click="openDrawer('download')" 
+          class="nav-btn"
+          title="批量下载" 
+          aria-label="批量下载"
+        >
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="nav-tooltip">批量下载</span>
         </button>
       </div>
 
@@ -328,9 +353,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import novelsData from '../../../public/novels.json'
+import DownloadPanel from '../../components/DownloadPanel.vue'
 
 // ============ 抽屉相关 ============
-type DrawerType = 'toc' | 'autoplay' | 'fontsize' | null
+type DrawerType = 'toc' | 'autoplay' | 'fontsize' | 'download' | null
 const currentDrawer = ref<DrawerType>(null)
 
 const openDrawer = (type: DrawerType) => {
