@@ -500,7 +500,7 @@ const swipeHintTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const showPullUpHint = ref(false)
 const isPullingUp = ref(false)
 const pullUpThreshold = 80 // 上拉触发阈值（像素）
-const swipeThreshold = 120 // 水平滑动阈值（增加阈值防止误触发）
+const swipeThreshold = 50 // 水平滑动阈值
 const swipeMaxVertical = 80 // 最大垂直偏移（防止斜滑）
 const swipeMinDuration = 50 // 最小滑动持续时间（毫秒），防止快速点击误触发
 
@@ -572,6 +572,15 @@ const handleTouchMove = (e: TouchEvent) => {
 
 // 触摸结束
 const handleTouchEnd = (e: TouchEvent) => {
+  // 如果字号面板打开，不处理滑动换章
+  if (currentDrawer.value === 'fontsize') {
+    showSwipeHint.value = false
+    showPullUpHint.value = false
+    isSwiping.value = false
+    isPullingUp.value = false
+    return
+  }
+
   const touch = e.changedTouches[0]
   touchEnd.value = {
     x: touch.clientX,
@@ -593,6 +602,11 @@ const handleTouchEnd = (e: TouchEvent) => {
 
 // 处理滑动逻辑
 const handleSwipe = () => {
+  // 如果字号面板打开，不处理滑动换章
+  if (currentDrawer.value === 'fontsize') {
+    return
+  }
+
   const diffX = touchStart.value.x - touchEnd.value.x
   const diffY = touchStart.value.y - touchEnd.value.y
   const absDiffX = Math.abs(diffX)
