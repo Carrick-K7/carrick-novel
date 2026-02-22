@@ -389,6 +389,10 @@ const autoPlaySpeed = ref<'slow' | 'medium' | 'fast'>('medium')
 const autoPlayTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const isAtBottom = ref(false)
 
+// 自动播放 localStorage key
+const AUTOPLAY_KEY = 'novel_reader_autoplay'
+const AUTOPLAY_SPEED_KEY = 'novel_reader_autoplay_speed'
+
 // 速度映射表
 const speedMap = {
   slow: 5000,
@@ -396,9 +400,28 @@ const speedMap = {
   fast: 1500
 }
 
+// 加载自动播放设置
+const loadAutoPlaySettings = () => {
+  const savedAutoPlay = localStorage.getItem(AUTOPLAY_KEY)
+  if (savedAutoPlay !== null) {
+    isAutoPlay.value = JSON.parse(savedAutoPlay)
+  }
+  const savedSpeed = localStorage.getItem(AUTOPLAY_SPEED_KEY)
+  if (savedSpeed !== null && ['slow', 'medium', 'fast'].includes(savedSpeed)) {
+    autoPlaySpeed.value = savedSpeed as 'slow' | 'medium' | 'fast'
+  }
+}
+
+// 保存自动播放设置
+const saveAutoPlaySettings = () => {
+  localStorage.setItem(AUTOPLAY_KEY, JSON.stringify(isAutoPlay.value))
+  localStorage.setItem(AUTOPLAY_SPEED_KEY, autoPlaySpeed.value)
+}
+
 // 切换自动播放
 const toggleAutoPlay = () => {
   isAutoPlay.value = !isAutoPlay.value
+  saveAutoPlaySettings()
   if (isAutoPlay.value) {
     // 开启自动播放时，检查是否已经在底部
     checkIfAtBottom()
@@ -414,6 +437,7 @@ const toggleAutoPlay = () => {
 // 设置自动播放速度
 const setAutoPlaySpeed = (speed: 'slow' | 'medium' | 'fast') => {
   autoPlaySpeed.value = speed
+  saveAutoPlaySettings()
   // 如果正在自动播放且已经在底部，重置计时器
   if (isAutoPlay.value && isAtBottom.value) {
     clearAutoPlayTimer()
@@ -476,8 +500,9 @@ const swipeHintTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const showPullUpHint = ref(false)
 const isPullingUp = ref(false)
 const pullUpThreshold = 80 // 上拉触发阈值（像素）
-const swipeThreshold = 50 // 水平滑动阈值
-const swipeMaxVertical = 100 // 最大垂直偏移（防止斜滑）
+const swipeThreshold = 120 // 水平滑动阈值（增加阈值防止误触发）
+const swipeMaxVertical = 80 // 最大垂直偏移（防止斜滑）
+const swipeMinDuration = 50 // 最小滑动持续时间（毫秒），防止快速点击误触发
 
 // 触摸开始
 const handleTouchStart = (e: TouchEvent) => {
@@ -574,6 +599,11 @@ const handleSwipe = () => {
   const absDiffY = Math.abs(diffY)
   const duration = touchEnd.value.time - touchStart.value.time
 
+  // 过滤掉快速点击（持续时间太短）
+  if (duration < swipeMinDuration) {
+    return
+  }
+
   // 必须是水平滑动主导，且超过阈值
   if (absDiffX > absDiffY && absDiffX > swipeThreshold && absDiffY < swipeMaxVertical) {
     if (diffX > 0) {
@@ -598,9 +628,9 @@ const handleSwipe = () => {
     return
   }
 
-  // 处理快速滑动（即使距离不够，但速度快）
+  // 处理快速滑动（提高速度阈值到 0.8，防止轻微快速滑动误触发）
   const velocity = absDiffX / duration
-  if (velocity > 0.5 && absDiffY < swipeMaxVertical) {
+  if (velocity > 0.8 && absDiffY < swipeMaxVertical && absDiffX > 60) {
     if (diffX > 0) {
       nextChapter()
     } else {
@@ -748,6 +778,15 @@ const loadContent = async () => {
   if (isTransitioning.value) {
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'auto' })
+      // 章节切换后，如果自动播放开启，检查是否需要启动计时器
+      if (isAutoPlay.value) {
+        // 重置底部状态，等待滚动检测
+        isAtBottom.value = false
+        // 延迟检查是否在底部，启动自动播放计时器
+        setTimeout(() => {
+          checkIfAtBottom()
+        }, 500)
+      }
     }, 10)
   }
 }
@@ -963,6 +1002,9 @@ onMounted(() => {
   // 加载保存的字号
   loadFontSize()
 
+  // 加载自动播放设置
+  loadAutoPlaySettings()
+
   // 恢复用户偏好
   const savedMode = localStorage.getItem('immersiveMode')
   if (savedMode !== null) {
@@ -1102,6 +1144,30 @@ header, .fixed.bottom-0 {
 
 .drawer-content {
   @apply flex-1 overflow-y-auto p-4;
+  /* 滚动条样式 - 确保可见 */
+  scrollbar-width: 8px;
+  scrollbar-color: #39c5bb var(--miku-bg-secondary);
+}
+
+/* Webkit 滚动条样式 */
+.drawer-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.drawer-content::-webkit-scrollbar-track {
+  background: var(--miku-bg-secondary);
+  border-radius: 4px;
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+  background: #39c5bb;
+  border-radius: 4px;
+  border: 2px solid var(--miku-bg-secondary);
+}
+
+.drawer-content::-webkit-scrollbar-thumb:hover {
+  background: #2da8a0;
 }
 
 /* 抽屉滑入动画 */
