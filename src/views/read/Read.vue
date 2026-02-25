@@ -442,9 +442,15 @@ const loadContent = async () => {
   isLoading.value = true
   try {
     const response = await fetch(`/novels/${currentChapter.value.file}`)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
     content.value = await response.text()
     recordReadingHistory()
-  } catch { content.value = '加载失败' }
+  } catch (e) {
+    console.error('加载章节失败:', e)
+    content.value = '加载失败'
+  }
   isLoading.value = false
   if (isTransitioning.value) {
     setTimeout(() => {
