@@ -1,81 +1,72 @@
 <template>
-  <Transition name="drawer-slide">
-    <div v-if="show" class="bottom-drawer">
-      <div class="drawer-header">
-        <span class="drawer-title">批量下载</span>
-        <button class="drawer-close" @click="close">✕</button>
+  <CDrawer v-model="isVisible" title="批量下载" @close="close">
+    <div class="download-content">
+      <!-- 章节选择 -->
+      <div class="select-section">
+        <div class="select-row">
+          <span class="select-label">从</span>
+          <select v-model="startChapter" class="chapter-select">
+            <option v-for="(ch, idx) in chapters" :key="idx" :value="idx">
+              {{ formatChapterTitle(ch.title, idx) }}
+            </option>
+          </select>
+        </div>
+        <div class="select-row">
+          <span class="select-label">到</span>
+          <select v-model="endChapter" class="chapter-select">
+            <option v-for="(ch, idx) in chapters" :key="idx" :value="idx">
+              {{ formatChapterTitle(ch.title, idx) }}
+            </option>
+          </select>
+        </div>
       </div>
-      
-      <div class="drawer-content">
-        <!-- 章节选择 -->
-        <div class="select-section">
-          <div class="select-row">
-            <span class="select-label">从</span>
-            <select v-model="startChapter" class="chapter-select">
-              <option v-for="(ch, idx) in chapters" :key="idx" :value="idx">
-                {{ formatChapterTitle(ch.title, idx) }}
-              </option>
-            </select>
-          </div>
-          <div class="select-row">
-            <span class="select-label">到</span>
-            <select v-model="endChapter" class="chapter-select">
-              <option v-for="(ch, idx) in chapters" :key="idx" :value="idx">
-                {{ formatChapterTitle(ch.title, idx) }}
-              </option>
-            </select>
-          </div>
+
+      <!-- 统计信息 -->
+      <div class="stats-section">
+        <div class="stat-item">
+          <span class="stat-label">已选择</span>
+          <span class="stat-value">{{ selectedCount }} 章</span>
         </div>
-        
-        <!-- 统计信息 -->
-        <div class="stats-section">
-          <div class="stat-item">
-            <span class="stat-label">已选择</span>
-            <span class="stat-value">{{ selectedCount }} 章</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">预计大小</span>
-            <span class="stat-value">≈ {{ estimatedSize }}</span>
-          </div>
+        <div class="stat-item">
+          <span class="stat-label">预计大小</span>
+          <span class="stat-value">≈ {{ estimatedSize }}</span>
         </div>
-        
-        <!-- 下载进度 -->
-        <div v-if="isDownloading" class="progress-section">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
-          </div>
-          <div class="progress-text">{{ progressText }}</div>
+      </div>
+
+      <!-- 下载进度 -->
+      <div v-if="isDownloading" class="progress-section">
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
         </div>
-        
-        <!-- 操作按钮 -->
-        <div class="action-section">
-          <button 
-            class="btn-cancel" 
-            :disabled="isDownloading"
-            @click="close"
-          >
-            取消
-          </button>
-          <button 
-            class="btn-download" 
-            :disabled="isDownloading || selectedCount === 0"
-            @click="startDownload"
-          >
-            <svg v-if="!isDownloading" class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span>{{ isDownloading ? '下载中...' : '下载' }}</span>
-          </button>
-        </div>
+        <div class="progress-text">{{ progressText }}</div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="action-section">
+        <button
+          class="btn-cancel"
+          :disabled="isDownloading"
+          @click="close"
+        >
+          取消
+        </button>
+        <button
+          class="btn-download"
+          :disabled="isDownloading || selectedCount === 0"
+          @click="startDownload"
+        >
+          <Download v-if="!isDownloading" class="w-4 h-4" />
+          <span>{{ isDownloading ? '下载中...' : '下载' }}</span>
+        </button>
       </div>
     </div>
-  </Transition>
+  </CDrawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { CDrawer } from '@carrick/ui-components'
+import { Download } from 'lucide-vue-next'
 
 interface Chapter {
   title: string
@@ -99,6 +90,12 @@ const endChapter = ref(0)
 const isDownloading = ref(false)
 const downloadProgress = ref(0)
 const downloadTotal = ref(0)
+
+// 双向绑定支持
+const isVisible = computed({
+  get: () => props.show,
+  set: () => emit('close')
+})
 
 // 监听显示状态，初始化选择
 watch(() => props.show, (show) => {
@@ -143,7 +140,7 @@ const progressText = computed(() => {
   return `${downloadProgress.value} / ${downloadTotal.value} 章`
 })
 
-const formatChapterTitle = (title: string, index: number) => {
+const formatChapterTitle = (title: string, _index: number) => {
   // 简化章节标题显示
   const match = title.match(/第(\d+)章/)
   if (match) {
@@ -172,42 +169,42 @@ const fetchChapterContent = async (chapter: Chapter): Promise<string> => {
 
 const startDownload = async () => {
   if (isDownloading.value || selectedCount.value === 0) return
-  
+
   isDownloading.value = true
   downloadProgress.value = 0
   downloadTotal.value = selectedCount.value
-  
+
   try {
     // 构建TXT内容
     let content = `${props.bookTitle}\n\n`
     content += `========================================\n`
     content += `本文件包含第 ${startChapter.value + 1} 章 至 第 ${endChapter.value + 1} 章\n`
     content += `========================================\n\n`
-    
+
     // 逐章获取内容
     const selectedChapters = props.chapters.slice(startChapter.value, endChapter.value + 1)
-    
+
     for (let i = 0; i < selectedChapters.length; i++) {
       const chapter = selectedChapters[i]
       const chapterContent = await fetchChapterContent(chapter)
-      
+
       content += `\n${chapter.title}\n`
       content += `----------------------------------------\n\n`
       content += chapterContent
       content += `\n\n`
-      
+
       downloadProgress.value = i + 1
-      
+
       // 小延迟让UI更新
       if (i < selectedChapters.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 10))
       }
     }
-    
+
     content += `\n\n========================================\n`
     content += `全文完\n`
     content += `========================================\n`
-    
+
     // 生成并下载文件
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -218,16 +215,16 @@ const startDownload = async () => {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
+
     // 显示成功提示
     showToast('下载完成！')
-    
+
     // 延迟关闭
     setTimeout(() => {
       isDownloading.value = false
       emit('close')
     }, 500)
-    
+
   } catch (e) {
     console.error('Download failed:', e)
     showToast('下载失败，请重试')
@@ -247,51 +244,13 @@ const showToast = (message: string) => {
 </script>
 
 <style scoped>
-/* 抽屉滑入动画 */
-.drawer-slide-enter-active,
-.drawer-slide-leave-active {
-  transition: transform 0.3s ease-out;
-}
-
-.drawer-slide-enter-from,
-.drawer-slide-leave-to {
-  transform: translateY(100%);
-}
-
-.bottom-drawer {
-  @apply fixed bottom-0 left-0 right-0 z-[160];
-  @apply bg-miku rounded-t-2xl;
-  @apply shadow-2xl;
-  max-height: calc(100vh - 60px);
-  display: flex;
-  flex-direction: column;
-}
-
-.drawer-header {
-  @apply flex items-center justify-between px-4 py-3;
-  @apply border-b border-miku;
-}
-
-.drawer-title {
-  @apply text-lg font-semibold;
-  color: var(--miku-primary);
-}
-
-.drawer-close {
-  @apply w-8 h-8 flex items-center justify-center rounded-full;
-  @apply text-miku-muted hover:text-miku-primary;
-  @apply transition-colors;
-  font-size: 1.25rem;
-}
-
-.drawer-content {
-  @apply flex-1 overflow-y-auto p-4;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+.download-content {
+  @apply space-y-4;
 }
 
 /* 章节选择区域 */
 .select-section {
-  @apply space-y-3 mb-6;
+  @apply space-y-3;
 }
 
 .select-row {
@@ -322,7 +281,7 @@ const showToast = (message: string) => {
 
 /* 统计信息区域 */
 .stats-section {
-  @apply flex gap-6 mb-6 p-4 rounded-xl;
+  @apply flex gap-6 p-4 rounded-xl;
   background: rgba(57, 197, 187, 0.08);
 }
 
@@ -342,7 +301,7 @@ const showToast = (message: string) => {
 
 /* 进度条区域 */
 .progress-section {
-  @apply mb-6;
+  @apply py-2;
 }
 
 .progress-bar {
@@ -363,7 +322,7 @@ const showToast = (message: string) => {
 
 /* 操作按钮区域 */
 .action-section {
-  @apply flex gap-3;
+  @apply flex gap-3 pt-2;
 }
 
 .btn-cancel,
@@ -397,16 +356,12 @@ const showToast = (message: string) => {
   @apply opacity-50 cursor-not-allowed;
 }
 
-.btn-icon {
-  @apply w-4 h-4;
-}
-
 /* 移动端优化 */
 @media (max-width: 360px) {
   .chapter-select {
     @apply py-2 text-xs;
   }
-  
+
   .btn-cancel,
   .btn-download {
     @apply py-2.5;
