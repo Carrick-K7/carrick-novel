@@ -644,10 +644,10 @@ watch(chapterIndex, (_newIndex, oldIndex) => {
 .chapter-content { @apply w-full touch-pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .chapter-content :deep(*) { -webkit-user-select: text; user-select: text; }
 
-/* 章节过渡动画 */
-.chapter-fade-enter-active, .chapter-fade-leave-active { transition: opacity 0.35s ease, transform 0.35s ease; }
-.chapter-fade-enter-from { opacity: 0; transform: translateX(20px); }
-.chapter-fade-leave-to { opacity: 0; transform: translateX(-20px); }
+/* 章节过渡动画 - 淡入淡出 */
+.chapter-fade-enter-active, .chapter-fade-leave-active { transition: opacity 0.35s ease; }
+.chapter-fade-enter-from { opacity: 0; }
+.chapter-fade-leave-to { opacity: 0; }
 .chapter-fade-enter-active { transition-delay: 0.05s; }
 @keyframes pulse-miku { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 .loading-indicator .loading-spinner { animation: spin 0.8s linear infinite, pulse-miku 1.5s ease-in-out infinite; }
@@ -668,6 +668,78 @@ watch(chapterIndex, (_newIndex, oldIndex) => {
 /* 淡入淡出 */
 .fade-overlay-enter-active, .fade-overlay-leave-active { transition: opacity 0.2s ease; }
 .fade-overlay-enter-from, .fade-overlay-leave-to { opacity: 0; }
+
+/* ========== PC 端样式 (>=1024px) ========== */
+@media (min-width: 1024px) {
+  /* 顶部导航栏 - PC 端 */
+  .fixed.top-0.left-0.right-0 {
+    max-width: 1200px;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 90%;
+  }
+
+  /* 底部导航栏 - PC 端优化 */
+  .fixed.bottom-0.left-0.right-0 {
+    max-width: 1200px;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 90%;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  /* PC 端导航按钮更大 */
+  .nav-btn {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .nav-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .nav-tooltip {
+    font-size: 0.875rem;
+    padding: 0.625rem 1rem;
+  }
+
+  /* PC 端阅读区域优化 */
+  .px-5.max-w-3xl {
+    padding-left: 3rem;
+    padding-right: 3rem;
+    max-width: 960px;
+  }
+
+  /* PC 端抽屉优化 - 居中弹窗样式 */
+  .bottom-drawer {
+    max-width: 500px;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    border-radius: 1rem;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2);
+  }
+
+  /* PC 端抽屉进入离开动画 - 从中心淡入淡出 */
+  .drawer-slide-enter-active,
+  .drawer-slide-leave-active {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .drawer-slide-enter-from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.95);
+  }
+
+  .drawer-slide-leave-to {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.95);
+  }
+}
 </style>
 
 <style>
