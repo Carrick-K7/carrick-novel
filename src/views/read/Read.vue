@@ -174,38 +174,40 @@
     </button>
 
     <!-- 抽屉组件 -->
-    <TocDrawer
-      v-model:show="drawerState.toc"
-      :chapters="book?.chapters || []"
-      :current-index="chapterIndex"
-      @select="goToChapter"
-      @close="closeDrawer"
-    />
+    <div class="drawer-wrapper">
+      <TocDrawer
+        v-model:show="drawerState.toc"
+        :chapters="book?.chapters || []"
+        :current-index="chapterIndex"
+        @select="goToChapter"
+        @close="closeDrawer"
+      />
 
-    <AutoplayDrawer
-      v-model:show="drawerState.autoplay"
-      v-model:speed="autoPlaySpeed"
-      :is-playing="isAutoPlay"
-      @toggle="toggleAutoPlay"
-      @close="closeDrawer"
-    />
+      <AutoplayDrawer
+        v-model:show="drawerState.autoplay"
+        v-model:speed="autoPlaySpeed"
+        :is-playing="isAutoPlay"
+        @toggle="toggleAutoPlay"
+        @close="closeDrawer"
+      />
 
-    <FontsizeDrawer
-      v-model:show="drawerState.fontsize"
-      v-model:size="fontSize"
-      :min-size="MIN_FONT_SIZE"
-      :max-size="MAX_FONT_SIZE"
-      @close="closeDrawer"
-    />
+      <FontsizeDrawer
+        v-model:show="drawerState.fontsize"
+        v-model:size="fontSize"
+        :min-size="MIN_FONT_SIZE"
+        :max-size="MAX_FONT_SIZE"
+        @close="closeDrawer"
+      />
 
-    <DownloadPanel
-      :show="drawerState.download"
-      :book-title="book?.title || ''"
-      :book-id="props.id"
-      :chapters="book?.chapters || []"
-      :current-chapter="chapterIndex"
-      @close="closeDrawer"
-    />
+      <DownloadPanel
+        :show="drawerState.download"
+        :book-title="book?.title || ''"
+        :book-id="props.id"
+        :chapters="book?.chapters || []"
+        :current-chapter="chapterIndex"
+        @close="closeDrawer"
+      />
+    </div>
   </div>
 </template>
 
@@ -715,7 +717,7 @@ watch(chapterIndex, (_newIndex, oldIndex) => {
   }
 
   /* PC 端抽屉优化 - 居中弹窗样式 */
-  .bottom-drawer {
+  .drawer-wrapper :deep(.bottom-drawer) {
     max-width: 500px;
     left: 50% !important;
     right: auto !important;
@@ -725,17 +727,17 @@ watch(chapterIndex, (_newIndex, oldIndex) => {
   }
 
   /* PC 端抽屉进入离开动画 - 从中心淡入淡出 */
-  .drawer-slide-enter-active,
-  .drawer-slide-leave-active {
+  .drawer-wrapper :deep(.drawer-slide-enter-active),
+  .drawer-wrapper :deep(.drawer-slide-leave-active) {
     transition: opacity 0.25s ease, transform 0.25s ease;
   }
 
-  .drawer-slide-enter-from {
+  .drawer-wrapper :deep(.drawer-slide-enter-from) {
     opacity: 0;
     transform: translateX(-50%) scale(0.95);
   }
 
-  .drawer-slide-leave-to {
+  .drawer-wrapper :deep(.drawer-slide-leave-to) {
     opacity: 0;
     transform: translateX(-50%) scale(0.95);
   }
